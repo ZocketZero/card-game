@@ -60,7 +60,10 @@ export const RulebookModal: React.FC<RulebookModalProps> = ({ onClose }) => {
               </div>
               <div className="role-card-box highlight">
                 <span className="role-box-title">King (K) ในสำรับ</span>
-                <p>มีความสามารถของทั้ง <strong>Queen และ Ace</strong> รวมกัน (เลือกได้ทั้ง 5 อย่าง!)</p>
+                <p>มีความสามารถพิเศษเฉพาะตัวเพียงอย่างเดียว:</p>
+                <ul>
+                  <li><em>💥 พิพากษา (Wipe):</em> <strong>กวาดล้างทหารศัตรูทั้งหมดในสนามออกในทีเดียว!</strong></li>
+                </ul>
               </div>
             </div>
           </section>

@@ -62,7 +62,7 @@ export interface GameState {
   lastCombatResult: CombatResult | null;
 }
 
-export type AbilityChoice = 'supply' | 'revive' | 'heal' | 'destroy' | 'holy_shield';
+export type AbilityChoice = 'supply' | 'revive' | 'heal' | 'destroy' | 'holy_shield' | 'wipe';
 
 export type GameAction =
   | { type: 'DEPLOY_SOLDIER'; playerId: PlayerId; cardId: string; slotIndex: number }

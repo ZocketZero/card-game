@@ -13,59 +13,71 @@ export function getAIMove(state: GameState): GameAction | null {
   if (state.phase === 'action') {
     // Play abilities or deploy soldiers if AP available
     if (ai.actionPoints > 0) {
-      const queenOrKing = ai.hand.find((c) => c.rank === 'Q' || c.rank === 'K');
-      const aceOrKing = ai.hand.find((c) => c.rank === 'A' || c.rank === 'K');
+      const queen = ai.hand.find((c) => c.rank === 'Q');
+      const king = ai.hand.find((c) => c.rank === 'K');
+      const ace = ai.hand.find((c) => c.rank === 'A');
 
-      // Destroy enemy soldier if available
-      const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
-      if (enemyWithSoldier !== -1 && aceOrKing) {
+      // Wipe ALL enemy soldiers if King is available
+      const enemySoldierExists = human.frontLine.some((s) => s !== null);
+      if (enemySoldierExists && king) {
         return {
           type: 'USE_ABILITY',
           playerId: 'p2',
-          cardId: aceOrKing.id,
+          cardId: king.id,
+          ability: 'wipe',
+        };
+      }
+
+      // Destroy 1 enemy soldier if Ace is available
+      const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
+      if (enemyWithSoldier !== -1 && ace) {
+        return {
+          type: 'USE_ABILITY',
+          playerId: 'p2',
+          cardId: ace.id,
           ability: 'destroy',
           targetEnemySlotIndex: enemyWithSoldier,
         };
       }
 
-      // Heal if HP is damaged
-      if (ai.shields.length < 3 && ai.deck.length > 0 && queenOrKing) {
+      // Heal if HP is damaged (Queen only)
+      if (ai.shields.length < 3 && ai.deck.length > 0 && queen) {
         return {
           type: 'USE_ABILITY',
           playerId: 'p2',
-          cardId: queenOrKing.id,
+          cardId: queen.id,
           ability: 'heal',
         };
       }
 
-      // Holy shield if not protected
-      if (!ai.hasHolyShield && aceOrKing) {
+      // Holy shield if not protected (Ace only)
+      if (!ai.hasHolyShield && ace) {
         return {
           type: 'USE_ABILITY',
           playerId: 'p2',
-          cardId: aceOrKing.id,
+          cardId: ace.id,
           ability: 'holy_shield',
         };
       }
 
-      // Revive if high-power soldier is in graveyard
+      // Revive if high-power soldier is in graveyard (Queen only)
       const soldierInGraveyard = ai.graveyard.find((c) => c.role === 'soldier');
-      if (soldierInGraveyard && queenOrKing) {
+      if (soldierInGraveyard && queen) {
         return {
           type: 'USE_ABILITY',
           playerId: 'p2',
-          cardId: queenOrKing.id,
+          cardId: queen.id,
           ability: 'revive',
           targetGraveyardCardId: soldierInGraveyard.id,
         };
       }
 
-      // Supply to draw cards
-      if (ai.deck.length > 0 && queenOrKing) {
+      // Supply to draw cards (Queen only)
+      if (ai.deck.length > 0 && queen) {
         return {
           type: 'USE_ABILITY',
           playerId: 'p2',
-          cardId: queenOrKing.id,
+          cardId: queen.id,
           ability: 'supply',
         };
       }

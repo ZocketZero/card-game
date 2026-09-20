@@ -203,12 +203,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
       if (card.role === 'soldier') return state;
       if (card.role === 'advisor' && !['supply', 'revive', 'heal'].includes(action.ability)) return state;
       if (card.role === 'weapon' && !['destroy', 'holy_shield'].includes(action.ability)) return state;
-      if (
-        card.role === 'king' &&
-        !['supply', 'revive', 'heal', 'destroy', 'holy_shield'].includes(action.ability)
-      ) {
-        return state;
-      }
+      if (card.role === 'king' && action.ability !== 'wipe') return state;
 
       // Validate ability execution preconditions
       if (action.ability === 'supply') {
@@ -228,6 +223,8 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         ) {
           return state;
         }
+      } else if (action.ability === 'wipe') {
+        if (!opponent.frontLine.some((s) => s !== null)) return state;
       } else if (action.ability === 'holy_shield') {
         if (activePlayer.hasHolyShield) return state;
       }
@@ -267,6 +264,18 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ทำลาย: ทำลาย [${
           destroyed.rank
         }${getSuitIcon(destroyed.suit)}] ของศัตรูทันที!`;
+      } else if (action.ability === 'wipe') {
+        // Destroy ALL enemy soldiers on front line
+        const wipedCards: string[] = [];
+        for (let i = 0; i < opponent.frontLine.length; i++) {
+          const slot = opponent.frontLine[i];
+          if (slot !== null) {
+            wipedCards.push(`[${slot.card.rank}${getSuitIcon(slot.card.suit)}]`);
+            opponent.graveyard.push(slot.card);
+            opponent.frontLine[i] = null;
+          }
+        }
+        desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] 💥 พิพากษา (Wipe): กวาดล้างทหารศัตรูทั้งหมด ${wipedCards.join(', ')} ออกจากสนาม!`;
       } else if (action.ability === 'holy_shield') {
         activePlayer.hasHolyShield = true;
         desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] โล่ศักดิ์สิทธิ์: กางบาเรียป้องกันการโจมตีใส่ King 1 ครั้ง!`;

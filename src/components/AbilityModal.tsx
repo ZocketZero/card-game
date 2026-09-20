@@ -1,7 +1,7 @@
 import React from 'react';
 import type { AbilityChoice, Card, PlayerState } from '../game/types';
 import { CardView } from './CardView';
-import { X, Sparkles, Layers, ShieldCheck, HeartHandshake, Flame, RefreshCw } from 'lucide-react';
+import { X, Sparkles, Layers, ShieldCheck, HeartHandshake, Flame, RefreshCw, Swords } from 'lucide-react';
 
 interface AbilityModalProps {
   card: Card;
@@ -45,8 +45,8 @@ export const AbilityModal: React.FC<AbilityModalProps> = ({
           </div>
 
           <div className="ability-options-list">
-            {/* Queen / King: Supply */}
-            {(isQueen || isKing) && (
+            {/* Queen only: Supply */}
+            {isQueen && (
               <button
                 className="ability-choice-btn"
                 onClick={() => onSelectAbility('supply')}
@@ -62,8 +62,8 @@ export const AbilityModal: React.FC<AbilityModalProps> = ({
               </button>
             )}
 
-            {/* Queen / King: Revive */}
-            {(isQueen || isKing) && (
+            {/* Queen only: Revive */}
+            {isQueen && (
               <button
                 className="ability-choice-btn"
                 onClick={() => onSelectAbility('revive')}
@@ -82,8 +82,8 @@ export const AbilityModal: React.FC<AbilityModalProps> = ({
               </button>
             )}
 
-            {/* Queen / King: Heal */}
-            {(isQueen || isKing) && (
+            {/* Queen only: Heal */}
+            {isQueen && (
               <button
                 className="ability-choice-btn"
                 onClick={() => onSelectAbility('heal')}
@@ -101,8 +101,8 @@ export const AbilityModal: React.FC<AbilityModalProps> = ({
               </button>
             )}
 
-            {/* Ace / King: Destroy */}
-            {(isAce || isKing) && (
+            {/* Ace only: Destroy (1 enemy soldier) */}
+            {isAce && (
               <div className="destroy-ability-section">
                 <div className="section-title">
                   <Flame size={16} />
@@ -130,8 +130,28 @@ export const AbilityModal: React.FC<AbilityModalProps> = ({
               </div>
             )}
 
-            {/* Ace / King: Holy Shield */}
-            {(isAce || isKing) && (
+            {/* King only: Wipe (destroy ALL enemy soldiers) */}
+            {isKing && (
+              <button
+                className="ability-choice-btn"
+                onClick={() => onSelectAbility('wipe')}
+                disabled={!hasEnemySoldiers}
+              >
+                <div className="ability-icon-wrapper destroy">
+                  <Swords size={24} />
+                </div>
+                <div className="ability-details">
+                  <div className="ability-name">💥 พิพากษา (Wipe)</div>
+                  <div className="ability-desc">
+                    กวาดล้างทหารศัตรูทั้งหมดในสนามออกในทีเดียว
+                    {!hasEnemySoldiers && ' (ไม่มีทหารศัตรูในสนาม)'}
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Ace only: Holy Shield */}
+            {isAce && (
               <button
                 className="ability-choice-btn"
                 onClick={() => onSelectAbility('holy_shield')}
