@@ -70,44 +70,61 @@ export function getAIMove(state: GameState): GameAction | null {
   }
 
   // 3. Play abilities if useful
-  const queenCard = ai.hand.find((c) => c.rank === 'Q');
-  if (queenCard) {
-    if (ai.shields.length < 3 && ai.deck.length > 0) {
-      return {
-        type: 'USE_ABILITY',
-        playerId: 'p2',
-        cardId: queenCard.id,
-        ability: 'heal',
-      };
-    }
+  const queenOrKing = ai.hand.find((c) => c.rank === 'Q' || c.rank === 'K');
+  const aceOrKing = ai.hand.find((c) => c.rank === 'A' || c.rank === 'K');
+
+  // Destroy enemy soldier if available
+  const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
+  if (enemyWithSoldier !== -1 && aceOrKing) {
     return {
       type: 'USE_ABILITY',
       playerId: 'p2',
-      cardId: queenCard.id,
-      ability: 'supply',
+      cardId: aceOrKing.id,
+      ability: 'destroy',
+      targetEnemySlotIndex: enemyWithSoldier,
     };
   }
 
-  const aceCard = ai.hand.find((c) => c.rank === 'A');
-  if (aceCard) {
-    const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
-    if (enemyWithSoldier !== -1) {
-      return {
-        type: 'USE_ABILITY',
-        playerId: 'p2',
-        cardId: aceCard.id,
-        ability: 'destroy',
-        targetEnemySlotIndex: enemyWithSoldier,
-      };
-    }
-    if (!ai.hasHolyShield) {
-      return {
-        type: 'USE_ABILITY',
-        playerId: 'p2',
-        cardId: aceCard.id,
-        ability: 'holy_shield',
-      };
-    }
+  // Heal if HP is damaged
+  if (ai.shields.length < 3 && ai.deck.length > 0 && queenOrKing) {
+    return {
+      type: 'USE_ABILITY',
+      playerId: 'p2',
+      cardId: queenOrKing.id,
+      ability: 'heal',
+    };
+  }
+
+  // Holy shield if not protected
+  if (!ai.hasHolyShield && aceOrKing) {
+    return {
+      type: 'USE_ABILITY',
+      playerId: 'p2',
+      cardId: aceOrKing.id,
+      ability: 'holy_shield',
+    };
+  }
+
+  // Revive if high-power soldier is in graveyard
+  const soldierInGraveyard = ai.graveyard.find((c) => c.role === 'soldier');
+  if (soldierInGraveyard && queenOrKing) {
+    return {
+      type: 'USE_ABILITY',
+      playerId: 'p2',
+      cardId: queenOrKing.id,
+      ability: 'revive',
+      targetGraveyardCardId: soldierInGraveyard.id,
+    };
+  }
+
+  // Supply to draw cards
+  if (ai.deck.length > 0 && queenOrKing) {
+    return {
+      type: 'USE_ABILITY',
+      playerId: 'p2',
+      cardId: queenOrKing.id,
+      ability: 'supply',
+    };
   }
 
   // 4. Deploy soldiers if slots available

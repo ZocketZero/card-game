@@ -266,4 +266,187 @@ describe('The Sovereign’s Duel Game Engine', () => {
     expect(state.players.p1.deck.length).toBe(initialDeckCount - 2);
     expect(state.players.p1.actionPoints).toBe(1);
   });
+
+  it('triggers Diamond bonus for defender when killing the attacker', () => {
+    let state = initGame();
+    // Attacker: Clubs 3 (power 3 + 2 = 5)
+    state.players.p1.frontLine[0] = {
+      card: { id: 'atk1', owner: 'p1', suit: 'clubs', rank: '3', basePower: 3, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    // Defender: Diamonds 7 (power 7 DEF)
+    state.players.p2.frontLine[0] = {
+      card: { id: 'def1', owner: 'p2', suit: 'diamonds', rank: '7', basePower: 7, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    const initialP2HandCount = state.players.p2.hand.length;
+
+    state = executeAction(state, {
+      type: 'ATTACK_SOLDIER',
+      playerId: 'p1',
+      attackerCardIds: ['atk1'],
+      targetSlotIndex: 0,
+    });
+
+    // Attacker defeated
+    expect(state.players.p1.frontLine[0]).toBeNull();
+    // Defender survives
+    expect(state.players.p2.frontLine[0]?.card.id).toBe('def1');
+    // P2 with Diamonds drew 1 card
+    expect(state.players.p2.hand.length).toBe(initialP2HandCount + 1);
+  });
+
+  it('destroys all combo attackers when combo attack fails against higher defender power', () => {
+    let state = initGame();
+    // 2 attackers: 2 of Spades (2) + 3 of Clubs (5) = total 7 ATK
+    state.players.p1.frontLine[0] = {
+      card: { id: 'atk1', owner: 'p1', suit: 'spades', rank: '2', basePower: 2, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    state.players.p1.frontLine[1] = {
+      card: { id: 'atk2', owner: 'p1', suit: 'clubs', rank: '3', basePower: 3, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    // Defender: 10 of Hearts (10 + 2 = 12 DEF)
+    state.players.p2.frontLine[0] = {
+      card: { id: 'def1', owner: 'p2', suit: 'hearts', rank: '10', basePower: 10, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    state = executeAction(state, {
+      type: 'ATTACK_SOLDIER',
+      playerId: 'p1',
+      attackerCardIds: ['atk1', 'atk2'],
+      targetSlotIndex: 0,
+    });
+
+    // Both combo attackers should be destroyed on failure
+    expect(state.players.p1.frontLine[0]).toBeNull();
+    expect(state.players.p1.frontLine[1]).toBeNull();
+    expect(state.players.p2.frontLine[0]?.card.id).toBe('def1');
+  });
+
+  it('caps Spades attack damage to King at 1 shield even when power >= 6', () => {
+    let state = initGame();
+    state.players.p2.frontLine = [null, null, null]; // Empty front line
+    state.players.p2.shields = [
+      { id: 's1', owner: 'p2', suit: 'hearts', rank: '2', basePower: 2, role: 'soldier' },
+      { id: 's2', owner: 'p2', suit: 'hearts', rank: '3', basePower: 3, role: 'soldier' },
+      { id: 's3', owner: 'p2', suit: 'hearts', rank: '4', basePower: 4, role: 'soldier' },
+    ];
+    // Attacker: 8 of Spades (power 8)
+    state.players.p1.frontLine[0] = {
+      card: { id: 'spade8', owner: 'p1', suit: 'spades', rank: '8', basePower: 8, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    state = executeAction(state, {
+      type: 'ATTACK_KING',
+      playerId: 'p1',
+      attackerCardIds: ['spade8'],
+    });
+
+    // Spades can only deal 1 shield damage per rule (เหลือ 2 ใบ)
+    expect(state.players.p2.shields.length).toBe(2);
+  });
+
+  it('deals 2 shield damage to King for non-Spades with power >= 6', () => {
+    let state = initGame();
+    state.players.p2.frontLine = [null, null, null]; // Empty front line
+    state.players.p2.shields = [
+      { id: 's1', owner: 'p2', suit: 'hearts', rank: '2', basePower: 2, role: 'soldier' },
+      { id: 's2', owner: 'p2', suit: 'hearts', rank: '3', basePower: 3, role: 'soldier' },
+      { id: 's3', owner: 'p2', suit: 'hearts', rank: '4', basePower: 4, role: 'soldier' },
+    ];
+    // Attacker: 8 of Clubs (power 8 + 2 = 10)
+    state.players.p1.frontLine[0] = {
+      card: { id: 'club8', owner: 'p1', suit: 'clubs', rank: '8', basePower: 8, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    state = executeAction(state, {
+      type: 'ATTACK_KING',
+      playerId: 'p1',
+      attackerCardIds: ['club8'],
+    });
+
+    // 2 shields removed (เหลือ 1 ใบ)
+    expect(state.players.p2.shields.length).toBe(1);
+  });
+
+  it('prevents duplicate card IDs in attack actions', () => {
+    let state = initGame();
+    state.players.p1.frontLine[0] = {
+      card: { id: 'single1', owner: 'p1', suit: 'clubs', rank: '4', basePower: 4, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    state.players.p2.frontLine[0] = {
+      card: { id: 'def1', owner: 'p2', suit: 'hearts', rank: '5', basePower: 5, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    const beforeState = state;
+    // Attempt duplicate card ID exploit
+    const nextState = executeAction(state, {
+      type: 'ATTACK_SOLDIER',
+      playerId: 'p1',
+      attackerCardIds: ['single1', 'single1'],
+      targetSlotIndex: 0,
+    });
+
+    // Action rejected, state unchanged
+    expect(nextState).toBe(beforeState);
+  });
+
+  it('allows King in hand to be used for abilities with strict validation', () => {
+    let state = initGame();
+    // Hand has King of Diamonds
+    const kingCard: Card = {
+      id: 'k-dia',
+      owner: 'p1',
+      suit: 'diamonds',
+      rank: 'K',
+      basePower: 0,
+      role: 'king',
+    };
+    state.players.p1.hand = [kingCard];
+    state.players.p2.frontLine[1] = {
+      card: { id: 'enemy1', owner: 'p2', suit: 'clubs', rank: '6', basePower: 6, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    // King used as Ace 'destroy'
+    state = executeAction(state, {
+      type: 'USE_ABILITY',
+      playerId: 'p1',
+      cardId: 'k-dia',
+      ability: 'destroy',
+      targetEnemySlotIndex: 1,
+    });
+
+    expect(state.players.p2.frontLine[1]).toBeNull();
+    expect(state.players.p1.actionPoints).toBe(1);
+
+    // Attempting invalid destroy on empty slot is rejected
+    state.players.p1.hand = [{ id: 'k2', owner: 'p1', suit: 'clubs', rank: 'K', basePower: 0, role: 'king' }];
+    const invalidResult = executeAction(state, {
+      type: 'USE_ABILITY',
+      playerId: 'p1',
+      cardId: 'k2',
+      ability: 'destroy',
+      targetEnemySlotIndex: 1, // now empty!
+    });
+    expect(invalidResult).toBe(state);
+  });
 });

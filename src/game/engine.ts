@@ -202,6 +202,34 @@ export function executeAction(state: GameState, action: GameAction): GameState {
       if (card.role === 'soldier') return state;
       if (card.role === 'advisor' && !['supply', 'revive', 'heal'].includes(action.ability)) return state;
       if (card.role === 'weapon' && !['destroy', 'holy_shield'].includes(action.ability)) return state;
+      if (
+        card.role === 'king' &&
+        !['supply', 'revive', 'heal', 'destroy', 'holy_shield'].includes(action.ability)
+      ) {
+        return state;
+      }
+
+      // Validate ability execution preconditions
+      if (action.ability === 'supply') {
+        if (activePlayer.deck.length === 0) return state;
+      } else if (action.ability === 'revive') {
+        if (!action.targetGraveyardCardId) return state;
+        const targetInGrave = activePlayer.graveyard.find((c) => c.id === action.targetGraveyardCardId);
+        if (!targetInGrave || targetInGrave.role !== 'soldier') return state;
+      } else if (action.ability === 'heal') {
+        if (activePlayer.shields.length >= 3 || activePlayer.deck.length === 0) return state;
+      } else if (action.ability === 'destroy') {
+        if (
+          action.targetEnemySlotIndex === undefined ||
+          action.targetEnemySlotIndex < 0 ||
+          action.targetEnemySlotIndex > 2 ||
+          opponent.frontLine[action.targetEnemySlotIndex] === null
+        ) {
+          return state;
+        }
+      } else if (action.ability === 'holy_shield') {
+        if (activePlayer.hasHolyShield) return state;
+      }
 
       // Discard ability card to graveyard
       activePlayer.hand.splice(cardIndex, 1);
@@ -225,33 +253,20 @@ export function executeAction(state: GameState, action: GameAction): GameState {
           desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ชุบชีวิต: ดึง [${
             revived.rank
           }${getSuitIcon(revived.suit)}] กลับขึ้นมือ`;
-        } else {
-          desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ชุบชีวิต แต่ไม่มีทหารให้เลือก`;
         }
       } else if (action.ability === 'heal') {
         // Heal 1 shield under King (max 3)
-        if (activePlayer.shields.length < 3 && activePlayer.deck.length > 0) {
-          const healCard = activePlayer.deck.shift()!;
-          activePlayer.shields.push(healCard);
-          desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] เยียวยา: เพิ่มเกราะชีวิตใต้ King เป็น ${activePlayer.shields.length} ใบ`;
-        } else {
-          desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] เยียวยา (เกราะชีวิตเต็ม 3 ใบแล้ว)`;
-        }
+        const healCard = activePlayer.deck.shift()!;
+        activePlayer.shields.push(healCard);
+        desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] เยียวยา: เพิ่มเกราะชีวิตใต้ King เป็น ${activePlayer.shields.length} ใบ`;
       } else if (action.ability === 'destroy') {
         // Destroy 1 enemy soldier on front line
-        if (
-          action.targetEnemySlotIndex !== undefined &&
-          opponent.frontLine[action.targetEnemySlotIndex] !== null
-        ) {
-          const destroyed = opponent.frontLine[action.targetEnemySlotIndex]!.card;
-          opponent.frontLine[action.targetEnemySlotIndex] = null;
-          opponent.graveyard.push(destroyed);
-          desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ทำลาย: ทำลาย [${
-            destroyed.rank
-          }${getSuitIcon(destroyed.suit)}] ของศัตรูทันที!`;
-        } else {
-          desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ทำลาย แต่ไม่มีเป้าหมาย`;
-        }
+        const destroyed = opponent.frontLine[action.targetEnemySlotIndex!]!.card;
+        opponent.frontLine[action.targetEnemySlotIndex!] = null;
+        opponent.graveyard.push(destroyed);
+        desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] ทำลาย: ทำลาย [${
+          destroyed.rank
+        }${getSuitIcon(destroyed.suit)}] ของศัตรูทันที!`;
       } else if (action.ability === 'holy_shield') {
         activePlayer.hasHolyShield = true;
         desc = `${activePlayer.name} ใช้ [${card.rank}${getSuitIcon(card.suit)}] โล่ศักดิ์สิทธิ์: กางบาเรียป้องกันการโจมตีใส่ King 1 ครั้ง!`;
@@ -267,9 +282,19 @@ export function executeAction(state: GameState, action: GameAction): GameState {
       const targetSoldier = opponent.frontLine[action.targetSlotIndex];
       if (!targetSoldier) return state;
 
+      // Prevent duplicate card IDs in attacker list
+      const uniqueAttackerIds = Array.from(new Set(action.attackerCardIds));
+      if (
+        uniqueAttackerIds.length === 0 ||
+        uniqueAttackerIds.length > 2 ||
+        uniqueAttackerIds.length !== action.attackerCardIds.length
+      ) {
+        return state;
+      }
+
       // Find attacker soldiers
       const attackerSoldiers: { soldier: Soldier; slotIdx: number }[] = [];
-      for (const cardId of action.attackerCardIds) {
+      for (const cardId of uniqueAttackerIds) {
         for (let i = 0; i < 3; i++) {
           const s = activePlayer.frontLine[i];
           if (s && s.card.id === cardId) {
@@ -278,7 +303,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         }
       }
 
-      if (attackerSoldiers.length === 0 || attackerSoldiers.length > 2) return state;
+      if (attackerSoldiers.length !== uniqueAttackerIds.length) return state;
 
       // Validate all attackers can attack
       for (const { soldier } of attackerSoldiers) {
@@ -297,17 +322,18 @@ export function executeAction(state: GameState, action: GameAction): GameState {
 
       const destroyedAttackerCardIds: string[] = [];
       let destroyedDefenderCard = false;
-      let diamondBonusTriggered = false;
+      let attackerDiamondBonusTriggered = false;
+      let defenderDiamondBonusTriggered = false;
 
       if (totalAtk > totalDef) {
-        // Defender destroyed
+        // Attacker wins: Defender destroyed
         destroyedDefenderCard = true;
         opponent.frontLine[action.targetSlotIndex] = null;
         opponent.graveyard.push(defenderCard);
 
-        // Diamond bonus check: draw 1 card
+        // Diamond bonus check: draw 1 card for attacker
         if (attackerCards.some((c) => c.suit === 'diamonds')) {
-          diamondBonusTriggered = true;
+          attackerDiamondBonusTriggered = true;
           const drawn = activePlayer.deck.shift();
           if (drawn) activePlayer.hand.push(drawn);
         }
@@ -325,48 +351,41 @@ export function executeAction(state: GameState, action: GameAction): GameState {
           activePlayer.graveyard.push(lowerCard);
         }
       } else if (totalAtk < totalDef) {
-        // Attacker loses
-        if (isCombo) {
-          // Rule: lower power is destroyed
-          const p0 = calculateAttackerPower(attackerCards[0]);
-          const p1 = calculateAttackerPower(attackerCards[1]);
-          const lowerIdx = p0 <= p1 ? 0 : 1;
-          const lowerCard = attackerCards[lowerIdx];
-          const lowerSlot = attackerSoldiers[lowerIdx].slotIdx;
+        // Attacker loses: All participating attackers are destroyed
+        for (const { soldier, slotIdx } of attackerSoldiers) {
+          destroyedAttackerCardIds.push(soldier.card.id);
+          activePlayer.frontLine[slotIdx] = null;
+          activePlayer.graveyard.push(soldier.card);
+        }
 
-          destroyedAttackerCardIds.push(lowerCard.id);
-          activePlayer.frontLine[lowerSlot] = null;
-          activePlayer.graveyard.push(lowerCard);
-        } else {
-          // Single attacker destroyed
-          const singleCard = attackerCards[0];
-          const singleSlot = attackerSoldiers[0].slotIdx;
-          destroyedAttackerCardIds.push(singleCard.id);
-          activePlayer.frontLine[singleSlot] = null;
-          activePlayer.graveyard.push(singleCard);
+        // Diamond bonus check: Defender killed enemy, draw 1 card
+        if (defenderCard.suit === 'diamonds') {
+          defenderDiamondBonusTriggered = true;
+          const drawn = opponent.deck.shift();
+          if (drawn) opponent.hand.push(drawn);
         }
       } else {
-        // Tie: both destroyed
+        // Tie: both sides destroyed
         destroyedDefenderCard = true;
         opponent.frontLine[action.targetSlotIndex] = null;
         opponent.graveyard.push(defenderCard);
 
-        if (isCombo) {
-          const p0 = calculateAttackerPower(attackerCards[0]);
-          const p1 = calculateAttackerPower(attackerCards[1]);
-          const lowerIdx = p0 <= p1 ? 0 : 1;
-          const lowerCard = attackerCards[lowerIdx];
-          const lowerSlot = attackerSoldiers[lowerIdx].slotIdx;
+        for (const { soldier, slotIdx } of attackerSoldiers) {
+          destroyedAttackerCardIds.push(soldier.card.id);
+          activePlayer.frontLine[slotIdx] = null;
+          activePlayer.graveyard.push(soldier.card);
+        }
 
-          destroyedAttackerCardIds.push(lowerCard.id);
-          activePlayer.frontLine[lowerSlot] = null;
-          activePlayer.graveyard.push(lowerCard);
-        } else {
-          const singleCard = attackerCards[0];
-          const singleSlot = attackerSoldiers[0].slotIdx;
-          destroyedAttackerCardIds.push(singleCard.id);
-          activePlayer.frontLine[singleSlot] = null;
-          activePlayer.graveyard.push(singleCard);
+        // Diamond bonus check on tie for any side with diamonds
+        if (attackerCards.some((c) => c.suit === 'diamonds')) {
+          attackerDiamondBonusTriggered = true;
+          const drawn = activePlayer.deck.shift();
+          if (drawn) activePlayer.hand.push(drawn);
+        }
+        if (defenderCard.suit === 'diamonds') {
+          defenderDiamondBonusTriggered = true;
+          const drawn = opponent.deck.shift();
+          if (drawn) opponent.hand.push(drawn);
         }
       }
 
@@ -379,13 +398,21 @@ export function executeAction(state: GameState, action: GameAction): GameState {
 
       activePlayer.actionPoints -= 1;
 
+      let bonusLog = '';
+      if (attackerDiamondBonusTriggered) bonusLog += ` [♦️ ${activePlayer.name} ได้จั่วไพ่ 1 ใบ]`;
+      if (defenderDiamondBonusTriggered) bonusLog += ` [♦️ ${opponent.name} ได้จั่วไพ่ 1 ใบ]`;
+
       const logMsg = `⚔️ ${activePlayer.name} ${isCombo ? 'คอมโบ' : 'ส่ง'} [${attackerCards
         .map((c) => `${c.rank}${getSuitIcon(c.suit)}`)
         .join(' + ')}] (ATK ${totalAtk}) โจมตี [${defenderCard.rank}${getSuitIcon(
         defenderCard.suit
       )}] (DEF ${totalDef}) -> ${
-        destroyedDefenderCard ? 'เป้าหมายถูกทำลาย!' : 'การโจมตีล้มเหลว!'
-      }${diamondBonusTriggered ? ' [♦️ ได้จั่วไพ่ 1 ใบ]' : ''}`;
+        totalAtk > totalDef
+          ? 'เป้าหมายถูกทำลาย!'
+          : totalAtk < totalDef
+          ? 'การโจมตีล้มเหลว ฝ่ายโจมตีถูกทำลาย!'
+          : 'เสมอ! ทั้งสองฝ่ายถูกทำลาย!'
+      }${bonusLog}`;
 
       newState.combatLog.unshift(logMsg);
 
@@ -402,7 +429,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         destroyedDefenderCard,
         kingDamageDealt: 0,
         holyShieldBlocked: false,
-        diamondBonusTriggered,
+        diamondBonusTriggered: attackerDiamondBonusTriggered || defenderDiamondBonusTriggered,
         description: logMsg,
       };
       newState.lastCombatResult = combatResult;
@@ -413,9 +440,19 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     case 'ATTACK_KING': {
       if (activePlayer.actionPoints <= 0) return state;
 
+      // Prevent duplicate card IDs in attacker list
+      const uniqueAttackerIds = Array.from(new Set(action.attackerCardIds));
+      if (
+        uniqueAttackerIds.length === 0 ||
+        uniqueAttackerIds.length > 2 ||
+        uniqueAttackerIds.length !== action.attackerCardIds.length
+      ) {
+        return state;
+      }
+
       // Find attacker soldiers
       const attackerSoldiers: { soldier: Soldier; slotIdx: number }[] = [];
-      for (const cardId of action.attackerCardIds) {
+      for (const cardId of uniqueAttackerIds) {
         for (let i = 0; i < 3; i++) {
           const s = activePlayer.frontLine[i];
           if (s && s.card.id === cardId) {
@@ -424,7 +461,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         }
       }
 
-      if (attackerSoldiers.length === 0 || attackerSoldiers.length > 2) return state;
+      if (attackerSoldiers.length !== uniqueAttackerIds.length) return state;
 
       // Validate attackers can attack
       for (const { soldier } of attackerSoldiers) {
@@ -470,9 +507,10 @@ export function executeAction(state: GameState, action: GameAction): GameState {
           newState.combatLog.unshift(`👑🏆 ${newState.winReason}`);
         } else {
           // Determine shields to remove:
-          // ATK 1-5 (or Spades bypass): remove 1 shield
-          // ATK 6+: remove 2 shields
-          const damage = totalAtk >= 6 && !(enemyHasGuards && isSpadesBypass) ? 2 : 1;
+          // Rule: โจมตีด้วยพลัง 1-5 (หรือใช้ ♠️): ดึงไพ่ใต้ King ออก 1 ใบ
+          //       โจมตีด้วยพลัง 6 ขึ้นไป: ดึงไพ่ใต้ King ออก 2 ใบ (ดาเมจรุนแรง)
+          const hasSpade = attackerCards.some((c) => c.suit === 'spades');
+          const damage = totalAtk >= 6 && !hasSpade ? 2 : 1;
           const actualDamage = Math.min(damage, opponent.shields.length);
           kingDamageDealt = actualDamage;
 
