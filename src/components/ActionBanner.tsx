@@ -5,7 +5,7 @@ import { Swords, Shield, Zap, Sparkles, Layers, RefreshCw, HeartHandshake, Flame
 
 export interface ActionBannerData {
   id: string;
-  type: 'combat' | 'king_attack' | 'ability' | 'deploy' | 'turn_start';
+  type: 'combat' | 'king_attack' | 'ability' | 'deploy' | 'turn_start' | 'enter_attack';
   title: string;
   subtitle?: string;
   badge?: string;
@@ -41,6 +41,24 @@ export const ActionBanner: React.FC<ActionBannerProps> = ({ data, onDismiss }) =
   }, [data, onDismiss]);
 
   if (!data) return null;
+
+  // Attack Phase Banner
+  if (data.type === 'enter_attack') {
+    return (
+      <div className="action-banner-overlay" onClick={onDismiss}>
+        <div className="attack-phase-banner animate-clash-pop">
+          <div className="attack-phase-icon-ring">
+            <Swords size={32} className="attack-phase-swords-icon" />
+          </div>
+          <div className="attack-phase-texts">
+            <span className="attack-phase-title">{data.title}</span>
+            <span className="attack-phase-subtitle">{data.subtitle}</span>
+          </div>
+          <span className="click-to-dismiss-hint">คลิกเพื่อสั่งการโจมตี</span>
+        </div>
+      </div>
+    );
+  }
 
   // Turn Start Banner
   if (data.type === 'turn_start') {

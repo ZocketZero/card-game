@@ -95,7 +95,14 @@ export const RulebookModal: React.FC<RulebookModalProps> = ({ onClose }) => {
                 <strong>ระยะสั่งการ (Action Phase):</strong>
                 <ul>
                   <li><strong>Action Points (2 AP):</strong> ใช้ 1 AP ต่อการ <em>วางทหาร (2-10 หรือ J)</em> ลงแนวหน้า หรือ <em>ใช้ความสามารถ (ทิ้ง Q, A, K)</em></li>
-                  <li><strong>การสั่งโจมตี:</strong> ทหารที่พร้อมรบสามารถสั่งโจมตีได้คนละ 1 ครั้งต่อเทิร์น โดย<strong>ไม่ถูกนับใน Action Points</strong> (ไม่เสียแต้ม AP)</li>
+                  <li>เมื่อวางแผนเสร็จสิ้น ให้กดปุ่ม <strong>"เข้าสู่ระยะโจมตี"</strong> (หรือกดจบเทิร์นได้หากไม่ต้องการโจมตี)</li>
+                </ul>
+              </li>
+              <li>
+                <strong>ระยะโจมตี (Attack Step / Phase):</strong>
+                <ul>
+                  <li><strong>ข้อห้ามสำคัญ:</strong> เมื่อเข้าสู่ระยะโจมตีแล้ว <em>จะไม่สามารถลงการ์ดทหารหรือใช้สกิลได้อีก</em></li>
+                  <li><strong>การสั่งโจมตี:</strong> ทหารที่พร้อมรบ (วางก่อนหน้านี้ หรือ Jack) สามารถสั่งโจมตีทหารศัตรูหรือ King ได้ (คนละ 1 ครั้งต่อเทิร์น ทั้งโจมตีเดี่ยวหรือคอมโบ 2 ใบ) โดย<strong>ไม่เสียแต้ม AP</strong></li>
                 </ul>
               </li>
               <li><strong>ระยะสิ้นสุด (End Phase):</strong> กดปุ่มจบเทิร์น เพื่อส่งต่อให้อีกฝ่าย</li>

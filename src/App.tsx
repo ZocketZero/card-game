@@ -127,6 +127,7 @@ export function App() {
     // Sound FX
     if (action.type === 'DEPLOY_SOLDIER') sounds.playCardPlay();
     else if (action.type === 'ATTACK_SOLDIER' || action.type === 'ATTACK_KING') sounds.playAttack();
+    else if (action.type === 'ENTER_ATTACK_PHASE') sounds.playAttack();
     else if (action.type === 'USE_ABILITY') {
       if (action.ability === 'heal') sounds.playHeal();
       else if (action.ability === 'holy_shield') sounds.playShieldBlock();
@@ -138,6 +139,16 @@ export function App() {
       const activePlayer = prevState.players[action.playerId];
       const opponent = prevState.players[getOpponentId(action.playerId)];
       const nextState = executeAction(prevState, action);
+
+      if (action.type === 'ENTER_ATTACK_PHASE') {
+        setActionBannerData({
+          id: Math.random().toString(),
+          type: 'enter_attack',
+          title: `${activePlayer.name} เข้าสู่ระยะโจมตี!`,
+          subtitle: '⚔️ พร้อมรบ! สั่งการโจมตีแนวหน้าศัตรูหรือ King (ไม่สามารถลงการ์ดหรือใช้สกิลได้)',
+          isMyTurn: action.playerId === effectivePlayerId,
+        });
+      }
 
       // Trigger Visual Animations according to Action Type
       if (action.type === 'DEPLOY_SOLDIER') {
@@ -566,6 +577,7 @@ export function App() {
 
   // Current active player perspective
   const isMyTurn = gameState.activePlayer === effectivePlayerId && !gameState.winner;
+  const isAttackPhase = gameState.phase === 'attack';
 
   const activePlayerState = gameState.players[effectivePlayerId];
   const opponentPlayerId: PlayerId = effectivePlayerId === 'p1' ? 'p2' : 'p1';
@@ -590,8 +602,12 @@ export function App() {
 
   // Hand card click
   const handleHandCardClick = (card: Card) => {
-    // Abilities (Q/K/A) are free — only block soldiers when out of AP
     if (!isMyTurn) return;
+    if (gameState.phase === 'attack') {
+      const slotKey = effectivePlayerId === 'p1' ? 'player-slot-1' : 'opp-slot-1';
+      addFloatingText(slotKey, 'ห้ามลงการ์ดหรือใช้สกิลในระยะโจมตี!', 'block');
+      return;
+    }
     if (card.role === 'soldier' && activePlayerState.actionPoints <= 0) return;
 
     if (card.role === 'soldier') {
@@ -694,6 +710,7 @@ export function App() {
     selectedAttackerCards.every((s) => s.card.suit === 'spades');
   const canTargetKing =
     isMyTurn &&
+    gameState.phase === 'attack' &&
     selectedAttackerIds.length > 0 &&
     (!enemyHasGuards || allAttackingAreSpades);
 
@@ -704,6 +721,15 @@ export function App() {
       type: 'ATTACK_KING',
       playerId: effectivePlayerId,
       attackerCardIds: selectedAttackerIds,
+    });
+  };
+
+  // Enter attack phase
+  const handleEnterAttackPhase = () => {
+    if (!isMyTurn || gameState.phase !== 'action') return;
+    applyAction({
+      type: 'ENTER_ATTACK_PHASE',
+      playerId: effectivePlayerId,
     });
   };
 
@@ -838,6 +864,7 @@ export function App() {
               player={activePlayerState}
               currentTurn={gameState.turn}
               isPlayerTurn={isMyTurn}
+              phase={gameState.phase}
               selectedAttackerIds={selectedAttackerIds}
               selectedHandCard={selectedHandCard}
               onSelectAttacker={handleSelectAttacker}
@@ -863,22 +890,30 @@ export function App() {
                 />
 
                 {/* Player Hand Cards */}
-                <div className="player-hand-scroll">
-                  {activePlayerState.hand.map((card) => {
-                    const isSelected = selectedHandCardId === card.id;
-                    const isPlayable = isMyTurn && (card.role !== 'soldier' || activePlayerState.actionPoints > 0);
+                <div className="player-hand-scroll-wrapper">
+                  {isAttackPhase && isMyTurn && (
+                    <div className="hand-attack-phase-banner">
+                      <span>🔒 อยู่ในระยะโจมตี — ไม่สามารถลงการ์ดหรือใช้สกิลได้</span>
+                    </div>
+                  )}
+                  <div className={`player-hand-scroll ${isAttackPhase && isMyTurn ? 'in-attack-phase' : ''}`}>
+                    {activePlayerState.hand.map((card) => {
+                      const isSelected = selectedHandCardId === card.id;
+                      const isPlayable = isMyTurn && !isAttackPhase && (card.role !== 'soldier' || activePlayerState.actionPoints > 0);
 
-                    return (
-                      <CardView
-                        key={card.id}
-                        card={card}
-                        size="md"
-                        isSelected={isSelected}
-                        isPlayable={isPlayable}
-                        onClick={() => handleHandCardClick(card)}
-                      />
-                    );
-                  })}
+                      return (
+                        <CardView
+                          key={card.id}
+                          card={card}
+                          size="md"
+                          isSelected={isSelected}
+                          isPlayable={isPlayable}
+                          disabled={isAttackPhase}
+                          onClick={() => handleHandCardClick(card)}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Player Deck & Graveyard Piles */}
@@ -910,10 +945,12 @@ export function App() {
               <ActionControls
                 player={activePlayerState}
                 isPlayerTurn={isMyTurn}
+                phase={gameState.phase}
                 selectedAttackerIds={selectedAttackerIds}
                 selectedAttackerCardsNames={selectedAttackerCardsNames}
                 totalAttackerPower={totalAttackerPower}
                 onClearAttackerSelection={() => setSelectedAttackerIds([])}
+                onEnterAttackPhase={handleEnterAttackPhase}
                 onEndTurn={handleEndTurn}
                 onOpenRulebook={() => setShowRulebook(true)}
                 onOpenCombatLog={() => setShowCombatLog(true)}

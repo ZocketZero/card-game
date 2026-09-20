@@ -131,6 +131,22 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
     const initialHandCount = state.players.p1.hand.length;
 
+    // Attacking in action phase should be rejected
+    const rejectedState = executeAction(state, {
+      type: 'ATTACK_SOLDIER',
+      playerId: 'p1',
+      attackerCardIds: ['atk1'],
+      targetSlotIndex: 1,
+    });
+    expect(rejectedState).toBe(state);
+
+    // Enter attack phase
+    state = executeAction(state, {
+      type: 'ENTER_ATTACK_PHASE',
+      playerId: 'p1',
+    });
+    expect(state.phase).toBe('attack');
+
     state = executeAction(state, {
       type: 'ATTACK_SOLDIER',
       playerId: 'p1',
@@ -150,6 +166,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('resolves combo attack: combines power and destroys lower card', () => {
     let state = initGame();
+    state.phase = 'attack';
     // 2 attackers: 3 of Hearts (3 ATK) and 4 of Clubs (4 + 2 = 6 ATK). Total = 9 ATK.
     state.players.p1.frontLine[0] = {
       card: { id: 'c1', owner: 'p1', suit: 'hearts', rank: '3', basePower: 3, role: 'soldier' },
@@ -185,6 +202,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('blocks attack with Holy Shield and consumes shield', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p2.hasHolyShield = true;
     state.players.p2.frontLine = [null, null, null]; // Empty front line
     state.players.p1.frontLine[0] = {
@@ -206,6 +224,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('reduces King shields and triggers victory when 0 shields and hit again', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p2.shields = [
       { id: 's1', owner: 'p2', suit: 'clubs', rank: '2', basePower: 2, role: 'soldier' },
     ];
@@ -226,7 +245,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
     expect(state.players.p2.shields.length).toBe(0);
     expect(state.winner).toBeNull();
 
-    // Reset attacker for next turn / test another attack when 0 shields
+    // Reset attacker for next attack when 0 shields
     state.players.p1.actionPoints = 1;
     state.players.p1.frontLine[0]!.hasAttackedThisTurn = false;
 
@@ -270,6 +289,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('triggers Diamond bonus for defender when killing the attacker', () => {
     let state = initGame();
+    state.phase = 'attack';
     // Attacker: Clubs 3 (power 3 + 2 = 5)
     state.players.p1.frontLine[0] = {
       card: { id: 'atk1', owner: 'p1', suit: 'clubs', rank: '3', basePower: 3, role: 'soldier' },
@@ -302,6 +322,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('destroys all combo attackers when combo attack fails against higher defender power', () => {
     let state = initGame();
+    state.phase = 'attack';
     // 2 attackers: 2 of Spades (2) + 3 of Clubs (5) = total 7 ATK
     state.players.p1.frontLine[0] = {
       card: { id: 'atk1', owner: 'p1', suit: 'spades', rank: '2', basePower: 2, role: 'soldier' },
@@ -335,6 +356,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('caps Spades attack damage to King at 1 shield even when power >= 6', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p2.frontLine = [null, null, null]; // Empty front line
     state.players.p2.shields = [
       { id: 's1', owner: 'p2', suit: 'hearts', rank: '2', basePower: 2, role: 'soldier' },
@@ -360,6 +382,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('deals 2 shield damage to King for non-Spades with power >= 6', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p2.frontLine = [null, null, null]; // Empty front line
     state.players.p2.shields = [
       { id: 's1', owner: 'p2', suit: 'hearts', rank: '2', basePower: 2, role: 'soldier' },
@@ -385,6 +408,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('prevents duplicate card IDs in attack actions', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p1.frontLine[0] = {
       card: { id: 'single1', owner: 'p1', suit: 'clubs', rank: '4', basePower: 4, role: 'soldier' },
       deployedTurn: 0,
@@ -453,6 +477,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
   it('does not consume or require action points for attacks', () => {
     let state = initGame();
+    state.phase = 'attack';
     state.players.p1.actionPoints = 0; // 0 AP remaining
     state.players.p1.frontLine[0] = {
       card: { id: 'atk1', owner: 'p1', suit: 'hearts', rank: '8', basePower: 8, role: 'soldier' },
@@ -496,5 +521,64 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
     expect(state.players.p2.shields.length).toBe(0); // 6 ATK deals 2 shields
     expect(state.players.p1.actionPoints).toBe(0); // Still 0
+  });
+
+  it('strictly prevents playing cards and skills in attack phase', () => {
+    let state = initGame();
+    const soldierCard: Card = {
+      id: 'soldier-1',
+      owner: 'p1',
+      suit: 'hearts',
+      rank: '7',
+      basePower: 7,
+      role: 'soldier',
+    };
+    const queenCard: Card = {
+      id: 'queen-1',
+      owner: 'p1',
+      suit: 'diamonds',
+      rank: 'Q',
+      basePower: 0,
+      role: 'advisor',
+    };
+    state.players.p1.hand = [soldierCard, queenCard];
+
+    // Enter attack phase
+    state = executeAction(state, {
+      type: 'ENTER_ATTACK_PHASE',
+      playerId: 'p1',
+    });
+    expect(state.phase).toBe('attack');
+
+    // Attempt to deploy soldier in attack phase - MUST BE REJECTED
+    const deployAttempt = executeAction(state, {
+      type: 'DEPLOY_SOLDIER',
+      playerId: 'p1',
+      cardId: 'soldier-1',
+      slotIndex: 0,
+    });
+    expect(deployAttempt).toBe(state);
+    expect(deployAttempt.players.p1.frontLine[0]).toBeNull();
+    expect(deployAttempt.players.p1.actionPoints).toBe(2);
+
+    // Attempt to use ability in attack phase - MUST BE REJECTED
+    const abilityAttempt = executeAction(state, {
+      type: 'USE_ABILITY',
+      playerId: 'p1',
+      cardId: 'queen-1',
+      ability: 'supply',
+    });
+    expect(abilityAttempt).toBe(state);
+    expect(abilityAttempt.players.p1.hand.length).toBe(2);
+
+    // End turn transitions to next player and resets phase to action
+    state = executeAction(state, {
+      type: 'END_TURN',
+      playerId: 'p1',
+    });
+    expect(state.turn).toBe(2);
+    expect(state.activePlayer).toBe('p2');
+    expect(state.phase).toBe('action');
+    expect(state.players.p2.actionPoints).toBe(2);
   });
 });

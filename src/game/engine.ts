@@ -166,6 +166,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
 
   switch (action.type) {
     case 'DEPLOY_SOLDIER': {
+      if (state.phase !== 'action') return state;
       if (activePlayer.actionPoints <= 0) return state;
       if (action.slotIndex < 0 || action.slotIndex > 2) return state;
       if (activePlayer.frontLine[action.slotIndex] !== null) return state;
@@ -193,6 +194,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     }
 
     case 'USE_ABILITY': {
+      if (state.phase !== 'action') return state;
       const cardIndex = activePlayer.hand.findIndex((c) => c.id === action.cardId);
       if (cardIndex === -1) return state;
       const card = activePlayer.hand[cardIndex];
@@ -274,7 +276,15 @@ export function executeAction(state: GameState, action: GameAction): GameState {
       return newState;
     }
 
+    case 'ENTER_ATTACK_PHASE': {
+      if (state.phase !== 'action') return state;
+      newState.phase = 'attack';
+      newState.combatLog.unshift(`⚔️ ${activePlayer.name} เข้าสู่ระยะโจมตี (Attack Step)`);
+      return newState;
+    }
+
     case 'ATTACK_SOLDIER': {
+      if (state.phase !== 'attack') return state;
       if (action.targetSlotIndex < 0 || action.targetSlotIndex > 2) return state;
       const targetSoldier = opponent.frontLine[action.targetSlotIndex];
       if (!targetSoldier) return state;
@@ -433,6 +443,7 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     }
 
     case 'ATTACK_KING': {
+      if (state.phase !== 'attack') return state;
       // Prevent duplicate card IDs in attacker list
       const uniqueAttackerIds = Array.from(new Set(action.attackerCardIds));
       if (

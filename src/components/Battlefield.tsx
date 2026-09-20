@@ -8,6 +8,7 @@ interface BattlefieldProps {
   player: PlayerState;
   currentTurn: number;
   isPlayerTurn: boolean;
+  phase: 'action' | 'attack' | 'draw' | 'end' | 'game_over';
   selectedAttackerIds: string[];
   selectedHandCard: Card | null;
   onSelectAttacker: (soldier: Soldier) => void;
@@ -24,6 +25,7 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
   player,
   currentTurn,
   isPlayerTurn,
+  phase,
   selectedAttackerIds,
   selectedHandCard,
   onSelectAttacker,
@@ -34,6 +36,8 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
   damagedSlot = null,
   floatingTexts = [],
 }) => {
+  const isAttackPhase = phase === 'attack';
+  const isActionPhase = phase === 'action';
   const isDeploying = selectedHandCard?.role === 'soldier';
 
   const selectedAttackerCards: Soldier[] = player.frontLine.filter(
@@ -51,7 +55,7 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
         <div className="frontline-label">แนวหน้าศัตรู (สูงสุด 3 กองกำลัง)</div>
         <div className="slots-grid">
           {opponent.frontLine.map((soldier, idx) => {
-            const isTargetable = isPlayerTurn && selectedAttackerIds.length > 0 && soldier !== null;
+            const isTargetable = isPlayerTurn && isAttackPhase && selectedAttackerIds.length > 0 && soldier !== null;
             const defenderDef = soldier ? calculateDefenderPower(soldier.card) : 0;
             const isWin = totalAttackerPower > defenderDef;
             const isTie = totalAttackerPower === defenderDef;
@@ -133,10 +137,10 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
         <div className="slots-grid">
           {player.frontLine.map((soldier, idx) => {
             const isEmpty = soldier === null;
-            const canDeployHere = isPlayerTurn && isDeploying && isEmpty && player.actionPoints > 0;
+            const canDeployHere = isPlayerTurn && isActionPhase && isDeploying && isEmpty && player.actionPoints > 0;
             const isSelected = soldier ? selectedAttackerIds.includes(soldier.card.id) : false;
             const isReady =
-              soldier && isPlayerTurn && canSoldierAttack(soldier, currentTurn);
+              soldier && isPlayerTurn && isAttackPhase && canSoldierAttack(soldier, currentTurn);
             const isJustDeployed = deployedSlot?.player === player.id && deployedSlot.slot === idx;
             const isAttacking = attackingSlots.some((a) => a.player === player.id && a.slot === idx);
             const isDamaged = damagedSlot?.player === player.id && damagedSlot.slot === idx;
@@ -153,7 +157,7 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
                 onClick={() => {
                   if (canDeployHere) {
                     onDeployToSlot(idx);
-                  } else if (soldier && (isReady || isSelected)) {
+                  } else if (soldier && isAttackPhase && (isReady || isSelected)) {
                     onSelectAttacker(soldier);
                   }
                 }}

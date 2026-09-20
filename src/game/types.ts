@@ -51,7 +51,7 @@ export interface CombatResult {
 export interface GameState {
   turn: number;
   activePlayer: PlayerId;
-  phase: 'draw' | 'action' | 'end' | 'game_over';
+  phase: 'draw' | 'action' | 'attack' | 'end' | 'game_over';
   players: {
     p1: PlayerState;
     p2: PlayerState;
@@ -74,6 +74,7 @@ export type GameAction =
       targetEnemySlotIndex?: number;
       targetGraveyardCardId?: string;
     }
+  | { type: 'ENTER_ATTACK_PHASE'; playerId: PlayerId }
   | {
       type: 'ATTACK_SOLDIER';
       playerId: PlayerId;

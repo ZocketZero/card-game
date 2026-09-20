@@ -1,14 +1,16 @@
 import React from 'react';
 import type { PlayerState } from '../game/types';
-import { Sparkles, ArrowRightCircle, BookOpen, ScrollText, Volume2, VolumeX, X, Skull } from 'lucide-react';
+import { Sparkles, ArrowRightCircle, BookOpen, ScrollText, Volume2, VolumeX, X, Skull, Swords, Lock } from 'lucide-react';
 
 interface ActionControlsProps {
   player: PlayerState;
   isPlayerTurn: boolean;
+  phase: 'action' | 'attack' | 'draw' | 'end' | 'game_over';
   selectedAttackerIds: string[];
   selectedAttackerCardsNames: string[];
   totalAttackerPower: number;
   onClearAttackerSelection: () => void;
+  onEnterAttackPhase: () => void;
   onEndTurn: () => void;
   onOpenRulebook: () => void;
   onOpenCombatLog: () => void;
@@ -21,10 +23,12 @@ interface ActionControlsProps {
 export const ActionControls: React.FC<ActionControlsProps> = ({
   player,
   isPlayerTurn,
+  phase,
   selectedAttackerIds,
   selectedAttackerCardsNames,
   totalAttackerPower,
   onClearAttackerSelection,
+  onEnterAttackPhase,
   onEndTurn,
   onOpenRulebook,
   onOpenCombatLog,
@@ -33,6 +37,8 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
   onToggleMute,
   onOpenLobby,
 }) => {
+  const isAttackPhase = phase === 'attack';
+
   return (
     <div className="action-controls-container">
       {/* Selection / Combo Notification Bar */}
@@ -59,34 +65,60 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
 
       {/* Bottom Main Bar */}
       <div className="action-bar-grid">
-        {/* Left: Action Points Orbs */}
-        <div className="ap-cluster">
-          <div className="ap-label">
-            <Sparkles size={16} className="ap-icon" />
-            <span>Action Points (AP):</span>
+        {/* Left: Action Points Orbs or Attack Phase Lock */}
+        {isAttackPhase ? (
+          <div className="ap-cluster attack-phase-locked" title="อยู่ในระยะโจมตี: ไม่สามารถลงการ์ดหรือใช้สกิลได้">
+            <Lock size={16} className="ap-lock-icon" />
+            <span className="ap-lock-text">ระยะโจมตี (ห้ามลงการ์ด/สกิล)</span>
           </div>
-          <div className="ap-orbs">
-            {[0, 1].map((index) => {
-              const isFilled = isPlayerTurn && index < player.actionPoints;
-              return (
-                <div
-                  key={`ap-orb-${index}`}
-                  className={`ap-orb ${isFilled ? 'filled' : 'empty'}`}
-                  title={isFilled ? 'มีแต้มสั่งการ' : 'ใช้แต้มไปแล้ว'}
-                />
-              );
-            })}
-            <span className="ap-count">{isPlayerTurn ? player.actionPoints : 0}/2</span>
+        ) : (
+          <div className="ap-cluster">
+            <div className="ap-label">
+              <Sparkles size={16} className="ap-icon" />
+              <span>แต้มสั่งการ (AP):</span>
+            </div>
+            <div className="ap-orbs">
+              {[0, 1].map((index) => {
+                const isFilled = isPlayerTurn && index < player.actionPoints;
+                return (
+                  <div
+                    key={`ap-orb-${index}`}
+                    className={`ap-orb ${isFilled ? 'filled' : 'empty'}`}
+                    title={isFilled ? 'มีแต้มสั่งการ' : 'ใช้แต้มไปแล้ว'}
+                  />
+                );
+              })}
+              <span className="ap-count">{isPlayerTurn ? player.actionPoints : 0}/2</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Center: Turn Status & End Turn Button */}
+        {/* Center: Phase Action Buttons */}
         <div className="turn-center-action">
           {isPlayerTurn ? (
-            <button className="end-turn-button active" onClick={onEndTurn}>
-              <span>จบเทิร์นของคุณ</span>
-              <ArrowRightCircle size={20} />
-            </button>
+            isAttackPhase ? (
+              <div className="turn-button-group">
+                <span className="current-phase-pill attack-phase">⚔️ ระยะโจมตี (Attack Step)</span>
+                <button className="end-turn-button active" onClick={onEndTurn}>
+                  <span>จบเทิร์นของคุณ</span>
+                  <ArrowRightCircle size={20} />
+                </button>
+              </div>
+            ) : (
+              <div className="turn-button-group">
+                <span className="current-phase-pill action-phase">📜 ระยะสั่งการ (Action Step)</span>
+                <div className="phase-buttons-row">
+                  <button className="enter-attack-button active" onClick={onEnterAttackPhase}>
+                    <Swords size={18} />
+                    <span>เข้าสู่ระยะโจมตี</span>
+                  </button>
+                  <button className="end-turn-button secondary" onClick={onEndTurn} title="ข้ามการโจมตีและจบเทิร์น">
+                    <span>จบเทิร์น</span>
+                    <ArrowRightCircle size={16} />
+                  </button>
+                </div>
+              </div>
+            )
           ) : (
             <div className="turn-waiting-badge">
               <span className="waiting-spinner"></span>
