@@ -43,7 +43,7 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
               {selectedAttackerIds.length === 2 ? '⚔️ โหมดคอมโบ 2 ใบ' : '🗡️ โหมดโจมตีเดี่ยว'}
             </span>
             <span className="selection-text">
-              เลือก: <strong>{selectedAttackerCardsNames.join(' + ')}</strong> (พลังโจมตี: {totalAttackerPower})
+              เลือก: <strong>{selectedAttackerCardsNames.join(' + ')}</strong> (พลังโจมตี ATK: {totalAttackerPower})
             </span>
             {selectedAttackerIds.length === 1 && (
               <span className="combo-hint">💡 คลิกทหารอีกใบในสนามเพื่อรวมพลังคอมโบได้</span>

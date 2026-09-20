@@ -580,6 +580,8 @@ export function App() {
                 isCurrentPlayer={false}
                 canTargetKing={canTargetKing}
                 onTargetKing={handleTargetKing}
+                attackerPower={totalAttackerPower}
+                isSpadesBypass={enemyHasGuards && allAttackingAreSpades}
               />
             </section>
 

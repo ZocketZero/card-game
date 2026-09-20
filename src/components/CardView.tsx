@@ -1,7 +1,12 @@
 import React from 'react';
 import type { Card, Suit } from '../game/types';
-import { getSuitColor, getSuitIcon } from '../game/engine';
-import { Swords, Sparkles, Zap, Heart, Clover, Gem, Compass } from 'lucide-react';
+import {
+  getSuitColor,
+  getSuitIcon,
+  calculateAttackerPower,
+  calculateDefenderPower,
+} from '../game/engine';
+import { Swords, Shield, Sparkles, Zap, Heart, Clover, Gem, Compass } from 'lucide-react';
 
 interface CardViewProps {
   card?: Card | null;
@@ -46,6 +51,9 @@ export const CardView: React.FC<CardViewProps> = ({
       </div>
     );
   }
+
+  const attackPower = card.role === 'soldier' ? calculateAttackerPower(card, false, false) : 0;
+  const defendPower = card.role === 'soldier' ? calculateDefenderPower(card) : 0;
 
   const suitColor = getSuitColor(card.suit);
   const suitIcon = getSuitIcon(card.suit);
@@ -95,30 +103,41 @@ export const CardView: React.FC<CardViewProps> = ({
           {suitIcon}
         </div>
         <div className="card-role-text">{roleLabel}</div>
-      </div>
-
-      {/* Bottom Right Rank & Suit (Inverted) */}
-      <div className="card-corner bottom-right">
-        <span className="card-rank" style={{ color: suitColor }}>
-          {card.rank}
-        </span>
-        <span className="card-suit-small">{suitIcon}</span>
-      </div>
-
-      {/* Power Badge / Perk Badge for Soldiers */}
-      {card.role === 'soldier' && (
-        <div className="card-soldier-footer">
-          <div className="card-stat-badge atk" title="พลังโจมตีพื้นฐาน">
-            <Swords size={12} />
-            <span>{card.basePower}</span>
-          </div>
+        {card.role === 'soldier' && (
           <div
             className="card-perk-badge"
             style={{ borderColor: perk.color, color: perk.color }}
             title={perk.text}
           >
-            <PerkIcon size={10} />
+            <PerkIcon size={size === 'sm' ? 8 : 10} />
             <span>{perk.text}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Power Badges: ATK and DEF for Soldiers */}
+      {card.role === 'soldier' && (
+        <div className="card-stats-row">
+          <div
+            className={`card-stat-badge stat-atk ${card.suit === 'clubs' ? 'has-bonus' : ''}`}
+            title={`พลังโจมตี (ATK): ${attackPower}${
+              card.suit === 'clubs' ? ` (พื้นฐาน ${card.basePower} + โบนัส ♣️ 2)` : ''
+            }`}
+          >
+            <Swords size={size === 'sm' ? 9 : size === 'lg' ? 14 : 11} />
+            <span className="stat-label">ATK</span>
+            <span className="stat-value">{attackPower}</span>
+          </div>
+
+          <div
+            className={`card-stat-badge stat-def ${card.suit === 'hearts' ? 'has-bonus' : ''}`}
+            title={`พลังป้องกัน (DEF): ${defendPower}${
+              card.suit === 'hearts' ? ` (พื้นฐาน ${card.basePower} + โบนัส ❤️ 2)` : ''
+            }`}
+          >
+            <Shield size={size === 'sm' ? 9 : size === 'lg' ? 14 : 11} />
+            <span className="stat-label">DEF</span>
+            <span className="stat-value">{defendPower}</span>
           </div>
         </div>
       )}

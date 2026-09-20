@@ -8,6 +8,8 @@ interface KingZoneProps {
   isCurrentPlayer: boolean;
   canTargetKing?: boolean;
   onTargetKing?: () => void;
+  attackerPower?: number;
+  isSpadesBypass?: boolean;
 }
 
 export const KingZone: React.FC<KingZoneProps> = ({
@@ -15,6 +17,8 @@ export const KingZone: React.FC<KingZoneProps> = ({
   isCurrentPlayer,
   canTargetKing = false,
   onTargetKing,
+  attackerPower,
+  isSpadesBypass = false,
 }) => {
   const hpCount = player.shields.length;
 
@@ -79,8 +83,24 @@ export const KingZone: React.FC<KingZoneProps> = ({
 
           {canTargetKing && (
             <div className="attack-king-prompt">
-              <Zap size={16} />
-              <span>สั่งโจมตี King!</span>
+              <div className="prompt-header">
+                <Zap size={14} />
+                <span>สั่งโจมตี King!</span>
+              </div>
+              {attackerPower !== undefined && (
+                <div className="prompt-atk-info">
+                  <span className="prompt-stat">⚔️ ATK {attackerPower}</span>
+                  <span className="prompt-damage">
+                    {player.hasHolyShield
+                      ? '(บล็อกด้วยโล่ศักดิ์สิทธิ์)'
+                      : isSpadesBypass
+                      ? '(-1 เกราะ ♠️)'
+                      : attackerPower >= 6
+                      ? '(-2 เกราะ ดาเมจหนัก!)'
+                      : '(-1 เกราะ)'}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
