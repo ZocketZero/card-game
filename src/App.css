@@ -1813,19 +1813,178 @@ body {
   100% { filter: hue-rotate(360deg); }
 }
 
-/* Responsive Rules */
+/* ===================================================================
+   RESPONSIVE DESIGN - MOBILE FIRST
+   =================================================================== */
+
+/* Tablet (≤ 900px) */
+@media (max-width: 900px) {
+  .game-table-container { padding: 8px 10px; gap: 8px; }
+  .battlefield-slot { width: 100px; height: 142px; }
+  .card-root.size-md { width: 90px; height: 130px; }
+  .slots-grid { gap: 10px; }
+  .player-hand-scroll-wrapper { max-width: 100%; }
+  .player-hand-scroll { max-width: 100%; }
+  .action-bar-grid { gap: 10px; }
+  .tool-btn span { display: none; }
+  .tool-btn { padding: 7px 9px; }
+  .ap-label span { display: none; }
+  .quick-tools-cluster { gap: 5px; }
+}
+
+/* Mobile (≤ 768px) */
 @media (max-width: 768px) {
-  .game-header-bar { padding: 8px 12px; }
-  .game-title-text { font-size: 0.95rem; }
+  /* --- Header --- */
+  .game-header-bar { padding: 8px 10px; gap: 6px; }
+  .game-title-text { display: none; }
+  .brand-section { gap: 6px; }
   .match-info-badge { display: none; }
-  .battlefield-slot { width: 95px; height: 135px; }
-  .card-root.size-md { width: 85px; height: 125px; }
-  .slots-grid { gap: 8px; }
-  .modal-body-split { flex-direction: column; }
+  .back-home-btn span { display: none; }
+  .back-home-btn { padding: 6px 8px; }
+
+  /* --- Table Container --- */
+  .game-table-container { padding: 6px 8px; gap: 6px; }
+
+  /* --- Opponent Stage --- */
+  .opponent-stage-area {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .opponent-hand-cluster { flex-wrap: wrap; gap: 4px; }
+
+  /* --- Battlefield --- */
+  .battlefield-container { padding: 8px; gap: 6px; }
+  .battlefield-slot { width: 80px; height: 115px; }
+  .card-root.size-md { width: 76px; height: 110px; }
+  .card-root.size-sm { width: 56px; height: 80px; }
+  .slots-grid { gap: 6px; grid-template-columns: repeat(3, 1fr); }
+  .frontline-label { font-size: 0.7rem; }
+  .divider-emblem { font-size: 0.7rem; }
+  .divider-emblem span { display: none; }
+
+  /* --- Card inner text scaling --- */
+  .card-rank { font-size: 0.95rem; }
+  .card-center-symbol { font-size: 1.6rem; }
+  .card-role-text { font-size: 0.55rem; }
+  .stat-value { font-size: 0.68rem; }
+  .stat-label { display: none; }
+  .card-perk-badge { font-size: 0.5rem; padding: 0px 3px; }
+
+  /* --- King Zone --- */
+  .king-cards-stack { width: 90px; height: 125px; }
+  .king-title { font-size: 0.75rem; }
+  .hp-badge { font-size: 0.68rem; padding: 2px 6px; }
+
+  /* --- Player Stage --- */
+  .player-stage-area { padding: 8px 10px; gap: 8px; }
+  .player-dock-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .player-hand-scroll-wrapper {
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+  }
+  .player-hand-scroll {
+    max-width: 100%;
+    gap: 5px;
+    padding: 4px 2px;
+    justify-content: flex-start;
+  }
+  .deck-graveyard-cluster { gap: 8px; flex-shrink: 0; }
+  .pile-card-box { width: 42px; height: 58px; font-size: 0.75rem; }
+  .pile-badge { font-size: 0.65rem; gap: 3px; }
+
+  /* --- Action Controls --- */
+  .action-controls-container { gap: 6px; }
+  .action-bar-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 6px;
+    align-items: center;
+  }
+  .ap-cluster { padding: 6px 10px; border-radius: 18px; }
+  .ap-label { font-size: 0.72rem; }
+  .ap-label span { display: none; }
+  .ap-orb { width: 14px; height: 14px; }
+  .ap-count { font-size: 0.75rem; }
+  .ap-lock-text { font-size: 0.7rem; }
+
+  /* Phase buttons row - stack buttons vertically on very small screens */
+  .turn-button-group { gap: 4px; }
+  .phase-buttons-row { gap: 5px; }
+  .enter-attack-button { padding: 8px 14px; font-size: 0.82rem; gap: 5px; }
+  .enter-attack-button span { display: none; }
+  .enter-attack-button::after { content: 'โจมตี'; }
+  .end-turn-button { padding: 8px 14px; font-size: 0.82rem; }
+  .end-turn-button.secondary { padding: 6px 10px; font-size: 0.75rem; }
+  .current-phase-pill { font-size: 0.65rem; padding: 2px 7px; }
+
+  /* Quick tools - icons only on mobile */
+  .quick-tools-cluster { gap: 4px; }
+  .tool-btn { padding: 6px 8px; font-size: 0.75rem; }
+  .tool-btn span { display: none; }
+  .attacker-selection-banner { padding: 6px 10px; font-size: 0.75rem; }
+  .selection-info { gap: 6px; }
+  .combo-hint, .target-hint { display: none; }
+  .turn-waiting-badge { padding: 6px 12px; font-size: 0.75rem; gap: 6px; }
+  .turn-center-action { grid-column: 1 / -1; display: flex; justify-content: center; }
+
+  /* --- Modals --- */
+  .modal-overlay { padding: 8px; }
+  .modal-content { max-height: 92vh; border-radius: 12px; }
+  .modal-body-split { flex-direction: column; padding: 12px; gap: 12px; }
+  .modal-card-preview { display: none; }
+  .graveyard-cards-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; padding: 12px; }
+
+  /* --- Victory --- */
+  .victory-title { font-size: 1.8rem; }
+  .rematch-btn { padding: 10px 20px; font-size: 0.9rem; }
+
+  /* --- Lobby/Room modals --- */
   .room-actions-split { grid-template-columns: 1fr; }
   .local-modes-grid { grid-template-columns: 1fr; }
   .role-cards-grid { grid-template-columns: 1fr; }
   .suit-powers-grid { grid-template-columns: 1fr; }
+}
+
+/* Extra-small phones (≤ 480px) */
+@media (max-width: 480px) {
+  /* Battlefield slots even more compact */
+  .battlefield-slot { width: 68px; height: 96px; }
+  .card-root.size-md { width: 64px; height: 92px; }
+  .card-root.size-sm { width: 46px; height: 66px; }
+  .slots-grid { gap: 4px; }
+  .card-center-symbol { font-size: 1.3rem; }
+  .card-rank { font-size: 0.82rem; }
+
+  /* King zone */
+  .king-cards-stack { width: 72px; height: 100px; }
+
+  /* Opponent stage compact */
+  .opponent-stage-area { padding: 6px 8px; }
+  .pile-card-box { width: 36px; height: 50px; font-size: 0.65rem; }
+
+  /* Header tighter */
+  .game-header-bar { padding: 6px 8px; }
+
+  /* Hand cards */
+  .player-hand-scroll { gap: 3px; }
+
+  /* Action bar */
+  .enter-attack-button { padding: 7px 10px; font-size: 0.75rem; }
+  .end-turn-button { padding: 7px 10px; font-size: 0.75rem; }
+  .ap-orb { width: 12px; height: 12px; }
+
+  /* Victory screen */
+  .victory-title { font-size: 1.5rem; }
+  .rematch-btn { padding: 8px 16px; font-size: 0.82rem; }
+  .victory-desc { font-size: 0.9rem; }
 }
 
 /* ==========================================================================
@@ -2265,13 +2424,45 @@ body {
   50% { transform: translateY(-8px); }
 }
 
+@media (max-width: 900px) {
+  .homepage-container { padding: 28px 16px 48px; }
+  .home-modes-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mode-card { padding: 16px; gap: 10px; }
+}
+
 @media (max-width: 768px) {
-  .home-main-title { font-size: 1.9rem; }
-  .home-sub-title { font-size: 1.1rem; }
-  .suit-selector-chips { grid-template-columns: 1fr 1fr; }
-  .home-modes-grid { grid-template-columns: 1fr; }
+  .homepage-container { padding: 16px 12px 40px; }
+  .home-top-controls { position: static; margin-bottom: 16px; justify-content: flex-end; width: 100%; }
+  .home-main-title { font-size: 1.75rem; letter-spacing: 1px; }
+  .home-sub-title { font-size: 1rem; }
+  .home-description { font-size: 0.85rem; }
+  .crown-emblem-wrapper { width: 70px; height: 70px; margin-bottom: 10px; }
+  .home-hero-section { margin-bottom: 18px; }
+
+  /* Customization card */
+  .home-customization-card { padding: 14px 16px; gap: 12px; margin-bottom: 18px; }
+  .custom-input-group { flex-direction: column; align-items: stretch; gap: 8px; }
+  .custom-label { min-width: unset; }
+  .home-name-input { min-width: unset; width: 100%; }
+  .suit-selector-chips { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .suit-chip { padding: 6px 8px; gap: 6px; }
+  .suit-chip-icon { font-size: 1.2rem; }
+  .suit-chip-title { font-size: 0.72rem; }
+  .suit-chip-perk { font-size: 0.62rem; }
+
+  /* Mode cards grid */
+  .home-modes-grid { grid-template-columns: 1fr; gap: 12px; }
+  .mode-card { padding: 16px; gap: 10px; }
   .mode-card.full-width-card { flex-direction: column; align-items: stretch; }
-  .home-top-controls { position: static; margin-bottom: 20px; justify-content: flex-end; width: 100%; }
+  .mode-icon-wrapper { width: 48px; height: 48px; border-radius: 12px; }
+  .mode-card-content h3 { font-size: 1rem; }
+  .mode-card-content p { font-size: 0.8rem; }
+  .mode-action-btn { padding: 8px 14px; font-size: 0.82rem; }
+  .join-room-inline-form { flex-direction: row; }
+
+  /* Footer */
+  .home-footer-info { gap: 8px; margin-top: 20px; }
+  .feature-pill { font-size: 0.72rem; padding: 5px 10px; }
 }
 
 /* ========================================================
