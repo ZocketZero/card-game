@@ -13,7 +13,9 @@ import {
   initGame,
   executeAction,
   calculateAttackerPower,
+  calculateDefenderPower,
   hasFrontLineSoldiers,
+  getOpponentId,
   getSuitIcon,
 } from './game/engine';
 import { getAIMove } from './game/ai';
@@ -31,6 +33,8 @@ import { RulebookModal } from './components/RulebookModal';
 import { CombatLogModal } from './components/CombatLogModal';
 import { LobbyModal } from './components/LobbyModal';
 import type { GameMode } from './components/LobbyModal';
+import { ActionBanner } from './components/ActionBanner';
+import type { ActionBannerData } from './components/ActionBanner';
 import { Crown, RotateCcw, Home } from 'lucide-react';
 import './App.css';
 
@@ -85,7 +89,40 @@ export function App() {
   const p2pRef = useRef<P2PNetwork | null>(null);
   const manualRtcRef = useRef<ManualWebRTC | null>(null);
 
-  // Apply Game Action
+  // Current active player perspective
+  const effectivePlayerId: PlayerId =
+    gameMode === 'pass_and_play' ? gameState.activePlayer : localPlayerId;
+
+  // Animation States
+  const [actionBannerData, setActionBannerData] = useState<ActionBannerData | null>(null);
+  const [isTableShaking, setIsTableShaking] = useState<boolean>(false);
+  const [deployedSlot, setDeployedSlot] = useState<{ player: string; slot: number } | null>(null);
+  const [attackingSlots, setAttackingSlots] = useState<{ player: string; slot: number }[]>([]);
+  const [damagedSlot, setDamagedSlot] = useState<{ player: string; slot: number } | null>(null);
+  const [oppKingDamaged, setOppKingDamaged] = useState<boolean>(false);
+  const [oppKingHealed, setOppKingHealed] = useState<boolean>(false);
+  const [oppKingBlocked, setOppKingBlocked] = useState<boolean>(false);
+  const [oppKingFt, setOppKingFt] = useState<string | null>(null);
+  const [playerKingDamaged, setPlayerKingDamaged] = useState<boolean>(false);
+  const [playerKingHealed, setPlayerKingHealed] = useState<boolean>(false);
+  const [playerKingBlocked, setPlayerKingBlocked] = useState<boolean>(false);
+  const [playerKingFt, setPlayerKingFt] = useState<string | null>(null);
+  const [floatingTexts, setFloatingTexts] = useState<{ id: string; slotKey: string; text: string; type: string }[]>([]);
+
+  const triggerTableShake = useCallback((ms = 450) => {
+    setIsTableShaking(true);
+    setTimeout(() => setIsTableShaking(false), ms);
+  }, []);
+
+  const addFloatingText = useCallback((slotKey: string, text: string, type: string, ms = 1300) => {
+    const id = Math.random().toString();
+    setFloatingTexts((prev) => [...prev, { id, slotKey, text, type }]);
+    setTimeout(() => {
+      setFloatingTexts((prev) => prev.filter((item) => item.id !== id));
+    }, ms);
+  }, []);
+
+  // Apply Game Action with Full Animation Orchestration
   const applyAction = useCallback((action: GameAction, broadcast = true) => {
     // Sound FX
     if (action.type === 'DEPLOY_SOLDIER') sounds.playCardPlay();
@@ -98,7 +135,190 @@ export function App() {
     }
 
     setGameState((prevState) => {
+      const activePlayer = prevState.players[action.playerId];
+      const opponent = prevState.players[getOpponentId(action.playerId)];
       const nextState = executeAction(prevState, action);
+
+      // Trigger Visual Animations according to Action Type
+      if (action.type === 'DEPLOY_SOLDIER') {
+        const deployedCard = activePlayer.hand.find((c) => c.id === action.cardId);
+        if (deployedCard) {
+          setDeployedSlot({ player: action.playerId, slot: action.slotIndex });
+          setTimeout(() => setDeployedSlot(null), 900);
+
+          const slotKey = action.playerId === effectivePlayerId ? `player-slot-${action.slotIndex}` : `opp-slot-${action.slotIndex}`;
+          addFloatingText(slotKey, 'ระดมพล!', 'deploy');
+
+          setActionBannerData({
+            id: Math.random().toString(),
+            type: 'deploy',
+            title: `${activePlayer.name} วางทหาร [${deployedCard.rank}${getSuitIcon(deployedCard.suit)}] ในแนวหน้าช่องที่ ${action.slotIndex + 1}`,
+          });
+        }
+      } else if (action.type === 'ATTACK_SOLDIER') {
+        const attackerSoldiers = activePlayer.frontLine
+          .map((s, idx) => ({ soldier: s, slotIdx: idx }))
+          .filter((item): item is { soldier: Soldier; slotIdx: number } => item.soldier !== null && action.attackerCardIds.includes(item.soldier.card.id));
+        const targetSoldier = opponent.frontLine[action.targetSlotIndex];
+
+        if (attackerSoldiers.length > 0 && targetSoldier) {
+          const attackerCards = attackerSoldiers.map((s) => s.soldier.card);
+          const totalAtk = attackerCards.reduce((sum, c) => sum + calculateAttackerPower(c, false, false), 0);
+          const totalDef = calculateDefenderPower(targetSoldier.card);
+          const isWin = totalAtk > totalDef;
+          const isTie = totalAtk === totalDef;
+
+          triggerTableShake(450);
+          setAttackingSlots(attackerSoldiers.map((s) => ({ player: action.playerId, slot: s.slotIdx })));
+          setTimeout(() => setAttackingSlots([]), 800);
+          setDamagedSlot({ player: opponent.id, slot: action.targetSlotIndex });
+          setTimeout(() => setDamagedSlot(null), 900);
+
+          const targetSlotKey = opponent.id === effectivePlayerId ? `player-slot-${action.targetSlotIndex}` : `opp-slot-${action.targetSlotIndex}`;
+          addFloatingText(
+            targetSlotKey,
+            isWin ? '💥 ชนะ! (ถูกทำลาย)' : isTie ? '⚔️ เสมอ (ตายคู่)' : '🛡️ สกัดกั้นสำเร็จ!',
+            isWin ? 'damage' : isTie ? 'tie' : 'block'
+          );
+
+          const hasDiamondBonus = (isWin && attackerCards.some((c) => c.suit === 'diamonds')) || (!isWin && targetSoldier.card.suit === 'diamonds');
+
+          setActionBannerData({
+            id: Math.random().toString(),
+            type: 'combat',
+            title: `${activePlayer.name} โจมตีแนวหน้าศัตรู!`,
+            attackerCards,
+            defenderCard: targetSoldier.card,
+            totalAtk,
+            totalDef,
+            resultText: isWin
+              ? '💥 ชัยชนะ! กองกำลังเป้าหมายถูกทำลาย'
+              : isTie
+              ? '⚔️ เสมอ! ทั้งสองฝ่ายถูกทำลาย'
+              : '🛡️ ล้มเหลว! ฝ่ายโจมตีถูกทำลาย',
+            badgeType: isWin ? 'success' : isTie ? 'warning' : 'danger',
+            bonusText: hasDiamondBonus ? '♦️ โบนัส Diamonds: ได้จั่วไพ่ 1 ใบ!' : undefined,
+          });
+        }
+      } else if (action.type === 'ATTACK_KING') {
+        const attackerSoldiers = activePlayer.frontLine
+          .map((s, idx) => ({ soldier: s, slotIdx: idx }))
+          .filter((item): item is { soldier: Soldier; slotIdx: number } => item.soldier !== null && action.attackerCardIds.includes(item.soldier.card.id));
+
+        if (attackerSoldiers.length > 0) {
+          const attackerCards = attackerSoldiers.map((s) => s.soldier.card);
+          const totalAtk = attackerCards.reduce((sum, c) => sum + calculateAttackerPower(c, false, false), 0);
+          const isBlocked = opponent.hasHolyShield;
+          const enemyGuards = hasFrontLineSoldiers(opponent);
+          const allSpades = attackerCards.every((c) => c.suit === 'spades');
+          const isBypass = enemyGuards && allSpades;
+          const kingDmg = isBlocked ? 0 : isBypass || totalAtk < 6 ? 1 : 2;
+
+          triggerTableShake(550);
+          setAttackingSlots(attackerSoldiers.map((s) => ({ player: action.playerId, slot: s.slotIdx })));
+          setTimeout(() => setAttackingSlots([]), 800);
+
+          if (opponent.id === effectivePlayerId) {
+            if (isBlocked) {
+              setPlayerKingBlocked(true);
+              setTimeout(() => setPlayerKingBlocked(false), 900);
+              setPlayerKingFt('🛡️ บล็อกสำเร็จ!');
+              setTimeout(() => setPlayerKingFt(null), 1300);
+            } else {
+              setPlayerKingDamaged(true);
+              setTimeout(() => setPlayerKingDamaged(false), 900);
+              setPlayerKingFt(`💥 -${kingDmg} เกราะ!`);
+              setTimeout(() => setPlayerKingFt(null), 1300);
+            }
+          } else {
+            if (isBlocked) {
+              setOppKingBlocked(true);
+              setTimeout(() => setOppKingBlocked(false), 900);
+              setOppKingFt('🛡️ บล็อกสำเร็จ!');
+              setTimeout(() => setOppKingFt(null), 1300);
+            } else {
+              setOppKingDamaged(true);
+              setTimeout(() => setOppKingDamaged(false), 900);
+              setOppKingFt(`💥 -${kingDmg} เกราะ!`);
+              setTimeout(() => setOppKingFt(null), 1300);
+            }
+          }
+
+          setActionBannerData({
+            id: Math.random().toString(),
+            type: 'king_attack',
+            title: `${activePlayer.name} สั่งโจมตีราชา (King Assault)!`,
+            attackerCards,
+            totalAtk,
+            resultText: isBlocked
+              ? '🛡️ โล่ศักดิ์สิทธิ์ (Holy Shield) บล็อกการโจมตีได้สำเร็จ!'
+              : kingDmg === 2
+              ? '💥💥 ดาเมจมหาศาล! ทำลายเกราะราชา 2 ใบ!'
+              : '💥 โจมตีสำเร็จ! ทำลายเกราะราชา 1 ใบ',
+            badgeType: isBlocked ? 'info' : 'danger',
+          });
+        }
+      } else if (action.type === 'USE_ABILITY') {
+        const abilityCard = activePlayer.hand.find((c) => c.id === action.cardId);
+        let subtitle = '';
+        let resultText = '';
+
+        if (action.ability === 'supply') {
+          subtitle = '📦 เบิกเสบียง (Supply)';
+          resultText = `${activePlayer.name} จั่วไพ่เพิ่ม 2 ใบขึ้นมือ`;
+        } else if (action.ability === 'revive') {
+          subtitle = '✨ ชุบชีวิต (Revive)';
+          resultText = `${activePlayer.name} ดึงทหารจากสุสานกลับขึ้นมือ`;
+        } else if (action.ability === 'heal') {
+          subtitle = '💚 เยียวยา (Heal)';
+          resultText = `${activePlayer.name} ฟื้นฟูเกราะชีวิตใต้ King +1 ใบ`;
+          if (activePlayer.id === effectivePlayerId) {
+            setPlayerKingHealed(true);
+            setTimeout(() => setPlayerKingHealed(false), 900);
+            setPlayerKingFt('💚 +1 เกราะ');
+            setTimeout(() => setPlayerKingFt(null), 1300);
+          } else {
+            setOppKingHealed(true);
+            setTimeout(() => setOppKingHealed(false), 900);
+            setOppKingFt('💚 +1 เกราะ');
+            setTimeout(() => setOppKingFt(null), 1300);
+          }
+        } else if (action.ability === 'destroy') {
+          subtitle = '💥 ทำลาย (Destroy)';
+          resultText = `${activePlayer.name} ทำลายทหารศัตรูทันที!`;
+          if (action.targetEnemySlotIndex !== undefined) {
+            triggerTableShake(450);
+            setDamagedSlot({ player: opponent.id, slot: action.targetEnemySlotIndex });
+            setTimeout(() => setDamagedSlot(null), 900);
+            const slotKey = opponent.id === effectivePlayerId ? `player-slot-${action.targetEnemySlotIndex}` : `opp-slot-${action.targetEnemySlotIndex}`;
+            addFloatingText(slotKey, '💥 ถูกทำลาย!', 'destroy');
+          }
+        } else if (action.ability === 'holy_shield') {
+          subtitle = '🛡️ โล่ศักดิ์สิทธิ์ (Holy Shield)';
+          resultText = `${activePlayer.name} กางบาเรียคุ้มครอง King 1 ครั้ง`;
+          if (activePlayer.id === effectivePlayerId) {
+            setPlayerKingBlocked(true);
+            setTimeout(() => setPlayerKingBlocked(false), 900);
+            setPlayerKingFt('🛡️ โล่ศักดิ์สิทธิ์!');
+            setTimeout(() => setPlayerKingFt(null), 1300);
+          } else {
+            setOppKingBlocked(true);
+            setTimeout(() => setOppKingBlocked(false), 900);
+            setOppKingFt('🛡️ โล่ศักดิ์สิทธิ์!');
+            setTimeout(() => setOppKingFt(null), 1300);
+          }
+        }
+
+        setActionBannerData({
+          id: Math.random().toString(),
+          type: 'ability',
+          title: `${activePlayer.name} ใช้ความสามารถพิเศษ`,
+          subtitle,
+          resultText,
+          abilityCard,
+          abilityChoice: action.ability,
+        });
+      }
 
       // Broadcast if multiplayer
       if (broadcast) {
@@ -115,7 +335,7 @@ export function App() {
     // Reset selection state
     setSelectedHandCardId(null);
     setSelectedAttackerIds([]);
-  }, []);
+  }, [effectivePlayerId, triggerTableShake, addFloatingText]);
 
   const restartGame = useCallback((broadcast = true) => {
     setGameState((prev) => {
@@ -327,9 +547,24 @@ export function App() {
     }
   };
 
+  // Turn Start Banner Announcement
+  useEffect(() => {
+    if (currentView !== 'game' || gameState.winner) return;
+
+    const isMyTurnTurn = gameState.activePlayer === effectivePlayerId;
+    const activePlayerName = gameState.players[gameState.activePlayer].name;
+
+    setActionBannerData({
+      id: `turn-${gameState.turn}-${gameState.activePlayer}`,
+      type: 'turn_start',
+      title: isMyTurnTurn ? 'เทิร์นของคุณ!' : `เทิร์นของ ${activePlayerName}`,
+      turnNumber: gameState.turn,
+      isMyTurn: isMyTurnTurn,
+      playerName: activePlayerName,
+    });
+  }, [gameState.turn, gameState.activePlayer, effectivePlayerId, currentView, gameState.winner]);
+
   // Current active player perspective
-  const effectivePlayerId: PlayerId =
-    gameMode === 'pass_and_play' ? gameState.activePlayer : localPlayerId;
   const isMyTurn = gameState.activePlayer === effectivePlayerId && !gameState.winner;
 
   const activePlayerState = gameState.players[effectivePlayerId];
@@ -542,7 +777,13 @@ export function App() {
           </header>
 
           {/* Main Board Table */}
-          <main className="game-table-container">
+          <main className={`game-table-container ${isTableShaking ? 'table-shake' : ''}`}>
+            {/* Animated Action / Combat / Turn Banner */}
+            <ActionBanner
+              data={actionBannerData}
+              onDismiss={() => setActionBannerData(null)}
+            />
+
             {/* Opponent Area (Top) */}
             <section className="opponent-stage-area">
               <div className="opponent-hand-cluster">
@@ -582,6 +823,10 @@ export function App() {
                 onTargetKing={handleTargetKing}
                 attackerPower={totalAttackerPower}
                 isSpadesBypass={enemyHasGuards && allAttackingAreSpades}
+                isDamaged={oppKingDamaged}
+                isHealed={oppKingHealed}
+                isShieldBlocked={oppKingBlocked}
+                floatingText={oppKingFt}
               />
             </section>
 
@@ -596,13 +841,24 @@ export function App() {
               onSelectAttacker={handleSelectAttacker}
               onTargetDefender={handleTargetDefender}
               onDeployToSlot={handleDeployToSlot}
+              deployedSlot={deployedSlot}
+              attackingSlots={attackingSlots}
+              damagedSlot={damagedSlot}
+              floatingTexts={floatingTexts}
             />
 
             {/* Player Stage Area (Bottom) */}
             <section className="player-stage-area">
               <div className="player-dock-row">
                 {/* Player King & Shields */}
-                <KingZone player={activePlayerState} isCurrentPlayer={true} />
+                <KingZone
+                  player={activePlayerState}
+                  isCurrentPlayer={true}
+                  isDamaged={playerKingDamaged}
+                  isHealed={playerKingHealed}
+                  isShieldBlocked={playerKingBlocked}
+                  floatingText={playerKingFt}
+                />
 
                 {/* Player Hand Cards */}
                 <div className="player-hand-scroll">

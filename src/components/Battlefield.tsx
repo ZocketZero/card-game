@@ -13,6 +13,10 @@ interface BattlefieldProps {
   onSelectAttacker: (soldier: Soldier) => void;
   onTargetDefender: (slotIndex: number) => void;
   onDeployToSlot: (slotIndex: number) => void;
+  deployedSlot?: { player: string; slot: number } | null;
+  attackingSlots?: { player: string; slot: number }[];
+  damagedSlot?: { player: string; slot: number } | null;
+  floatingTexts?: { id: string; slotKey: string; text: string; type: string }[];
 }
 
 export const Battlefield: React.FC<BattlefieldProps> = ({
@@ -25,6 +29,10 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
   onSelectAttacker,
   onTargetDefender,
   onDeployToSlot,
+  deployedSlot = null,
+  attackingSlots = [],
+  damagedSlot = null,
+  floatingTexts = [],
 }) => {
   const isDeploying = selectedHandCard?.role === 'soldier';
 
@@ -47,13 +55,24 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
             const defenderDef = soldier ? calculateDefenderPower(soldier.card) : 0;
             const isWin = totalAttackerPower > defenderDef;
             const isTie = totalAttackerPower === defenderDef;
+            const isJustDeployed = deployedSlot?.player === opponent.id && deployedSlot.slot === idx;
+            const isAttacking = attackingSlots.some((a) => a.player === opponent.id && a.slot === idx);
+            const isDamaged = damagedSlot?.player === opponent.id && damagedSlot.slot === idx;
+            const slotFt = floatingTexts.find((f) => f.slotKey === `opp-slot-${idx}`);
 
             return (
               <div
                 key={`opp-slot-${idx}`}
-                className={`battlefield-slot ${isTargetable ? 'is-targetable' : ''}`}
+                className={`battlefield-slot ${isTargetable ? 'is-targetable' : ''} ${
+                  isJustDeployed ? 'slot-just-deployed' : ''
+                } ${isAttacking ? 'slot-is-attacking-opp' : ''} ${isDamaged ? 'slot-is-damaged' : ''}`}
                 onClick={() => isTargetable && onTargetDefender(idx)}
               >
+                {slotFt && (
+                  <div className={`floating-combat-text type-${slotFt.type} animate-float-fade`}>
+                    {slotFt.text}
+                  </div>
+                )}
                 {soldier ? (
                   <CardView
                     card={soldier.card}
@@ -118,13 +137,19 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
             const isSelected = soldier ? selectedAttackerIds.includes(soldier.card.id) : false;
             const isReady =
               soldier && isPlayerTurn && canSoldierAttack(soldier, currentTurn);
+            const isJustDeployed = deployedSlot?.player === player.id && deployedSlot.slot === idx;
+            const isAttacking = attackingSlots.some((a) => a.player === player.id && a.slot === idx);
+            const isDamaged = damagedSlot?.player === player.id && damagedSlot.slot === idx;
+            const slotFt = floatingTexts.find((f) => f.slotKey === `player-slot-${idx}`);
 
             return (
               <div
                 key={`player-slot-${idx}`}
                 className={`battlefield-slot ${canDeployHere ? 'can-deploy' : ''} ${
                   isSelected ? 'selected-slot' : ''
-                }`}
+                } ${isJustDeployed ? 'slot-just-deployed' : ''} ${
+                  isAttacking ? 'slot-is-attacking-player' : ''
+                } ${isDamaged ? 'slot-is-damaged' : ''}`}
                 onClick={() => {
                   if (canDeployHere) {
                     onDeployToSlot(idx);
@@ -133,6 +158,11 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
                   }
                 }}
               >
+                {slotFt && (
+                  <div className={`floating-combat-text type-${slotFt.type} animate-float-fade`}>
+                    {slotFt.text}
+                  </div>
+                )}
                 {soldier ? (
                   <CardView
                     card={soldier.card}

@@ -10,6 +10,10 @@ interface KingZoneProps {
   onTargetKing?: () => void;
   attackerPower?: number;
   isSpadesBypass?: boolean;
+  isDamaged?: boolean;
+  isHealed?: boolean;
+  isShieldBlocked?: boolean;
+  floatingText?: string | null;
 }
 
 export const KingZone: React.FC<KingZoneProps> = ({
@@ -19,6 +23,10 @@ export const KingZone: React.FC<KingZoneProps> = ({
   onTargetKing,
   attackerPower,
   isSpadesBypass = false,
+  isDamaged = false,
+  isHealed = false,
+  isShieldBlocked = false,
+  floatingText = null,
 }) => {
   const hpCount = player.shields.length;
 
@@ -65,10 +73,18 @@ export const KingZone: React.FC<KingZoneProps> = ({
         <div
           className={`king-card-wrapper ${player.hasHolyShield ? 'holy-shield-active' : ''} ${
             canTargetKing ? 'can-target-king' : ''
+          } ${isDamaged ? 'king-damaged-anim' : ''} ${isHealed ? 'king-healed-anim' : ''} ${
+            isShieldBlocked ? 'king-blocked-anim' : ''
           }`}
           onClick={canTargetKing ? onTargetKing : undefined}
           style={{ zIndex: 10 }}
         >
+          {floatingText && (
+            <div className="floating-combat-text king-floating-text animate-float-fade">
+              {floatingText}
+            </div>
+          )}
+
           <CardView
             card={player.king}
             size="md"
