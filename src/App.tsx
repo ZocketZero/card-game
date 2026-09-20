@@ -423,7 +423,7 @@ export function App() {
 
   // Frontline soldier selection (for attack or combo)
   const handleSelectAttacker = (soldier: Soldier) => {
-    if (!isMyTurn || activePlayerState.actionPoints <= 0) return;
+    if (!isMyTurn) return;
     setSelectedHandCardId(null);
 
     const cardId = soldier.card.id;

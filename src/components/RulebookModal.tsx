@@ -92,11 +92,10 @@ export const RulebookModal: React.FC<RulebookModalProps> = ({ onClose }) => {
             <ol>
               <li><strong>ระยะจั่ว (Draw Phase):</strong> จั่วไพ่ 1 ใบจากกองจั่วโดยอัตโนมัติเมื่อเริ่มเทิร์น</li>
               <li>
-                <strong>ระยะสั่งการ (Action Phase):</strong> ได้รับ <strong>2 Action Points</strong> เลือกทำ:
+                <strong>ระยะสั่งการ (Action Phase):</strong>
                 <ul>
-                  <li>วางทหาร (2-10 หรือ J) ลงแนวหน้า (สูงสุด 3 ใบ)</li>
-                  <li>ใช้ความสามารถ (ทิ้ง Q, A, K เพื่อใช้เอฟเฟกต์)</li>
-                  <li>สั่งโจมตี (สั่งทหารโจมตีเดี่ยว หรือรวมพลังคอมโบ 2 ใบ)</li>
+                  <li><strong>Action Points (2 AP):</strong> ใช้ 1 AP ต่อการ <em>วางทหาร (2-10 หรือ J)</em> ลงแนวหน้า หรือ <em>ใช้ความสามารถ (ทิ้ง Q, A, K)</em></li>
+                  <li><strong>การสั่งโจมตี:</strong> ทหารที่พร้อมรบสามารถสั่งโจมตีได้คนละ 1 ครั้งต่อเทิร์น โดย<strong>ไม่ถูกนับใน Action Points</strong> (ไม่เสียแต้ม AP)</li>
                 </ul>
               </li>
               <li><strong>ระยะสิ้นสุด (End Phase):</strong> กดปุ่มจบเทิร์น เพื่อส่งต่อให้อีกฝ่าย</li>

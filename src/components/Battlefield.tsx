@@ -86,7 +86,7 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
             const canDeployHere = isPlayerTurn && isDeploying && isEmpty && player.actionPoints > 0;
             const isSelected = soldier ? selectedAttackerIds.includes(soldier.card.id) : false;
             const isReady =
-              soldier && isPlayerTurn && canSoldierAttack(soldier, currentTurn) && player.actionPoints > 0;
+              soldier && isPlayerTurn && canSoldierAttack(soldier, currentTurn);
 
             return (
               <div
@@ -97,7 +97,7 @@ export const Battlefield: React.FC<BattlefieldProps> = ({
                 onClick={() => {
                   if (canDeployHere) {
                     onDeployToSlot(idx);
-                  } else if (soldier && isReady) {
+                  } else if (soldier && (isReady || isSelected)) {
                     onSelectAttacker(soldier);
                   }
                 }}

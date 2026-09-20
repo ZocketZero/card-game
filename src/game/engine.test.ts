@@ -144,7 +144,8 @@ describe('The Sovereign’s Duel Game Engine', () => {
 
     // Diamond bonus gave 1 card
     expect(state.players.p1.hand.length).toBe(initialHandCount + 1);
-    expect(state.players.p1.actionPoints).toBe(1);
+    // Attacks do not consume action points
+    expect(state.players.p1.actionPoints).toBe(2);
   });
 
   it('resolves combo attack: combines power and destroys lower card', () => {
@@ -448,5 +449,52 @@ describe('The Sovereign’s Duel Game Engine', () => {
       targetEnemySlotIndex: 1, // now empty!
     });
     expect(invalidResult).toBe(state);
+  });
+
+  it('does not consume or require action points for attacks', () => {
+    let state = initGame();
+    state.players.p1.actionPoints = 0; // 0 AP remaining
+    state.players.p1.frontLine[0] = {
+      card: { id: 'atk1', owner: 'p1', suit: 'hearts', rank: '8', basePower: 8, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    state.players.p2.frontLine[0] = {
+      card: { id: 'def1', owner: 'p2', suit: 'hearts', rank: '4', basePower: 4, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+
+    // Attack soldier with 0 AP
+    state = executeAction(state, {
+      type: 'ATTACK_SOLDIER',
+      playerId: 'p1',
+      attackerCardIds: ['atk1'],
+      targetSlotIndex: 0,
+    });
+
+    expect(state.players.p2.frontLine[0]).toBeNull();
+    expect(state.players.p1.actionPoints).toBe(0); // Still 0, not deducted
+    expect(state.players.p1.frontLine[0]!.hasAttackedThisTurn).toBe(true);
+
+    // Attack King with another soldier with 0 AP
+    state.players.p1.frontLine[1] = {
+      card: { id: 'atk2', owner: 'p1', suit: 'diamonds', rank: '6', basePower: 6, role: 'soldier' },
+      deployedTurn: 0,
+      hasAttackedThisTurn: false,
+    };
+    state.players.p2.shields = [
+      { id: 'sh1', owner: 'p2', suit: 'hearts', rank: '2', basePower: 2, role: 'soldier' },
+      { id: 'sh2', owner: 'p2', suit: 'hearts', rank: '3', basePower: 3, role: 'soldier' },
+    ];
+
+    state = executeAction(state, {
+      type: 'ATTACK_KING',
+      playerId: 'p1',
+      attackerCardIds: ['atk2'],
+    });
+
+    expect(state.players.p2.shields.length).toBe(0); // 6 ATK deals 2 shields
+    expect(state.players.p1.actionPoints).toBe(0); // Still 0
   });
 });

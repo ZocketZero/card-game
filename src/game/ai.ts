@@ -2,8 +2,8 @@ import { hasFrontLineSoldiers } from './engine';
 import type { GameAction, GameState } from './types';
 
 export function getAIMove(state: GameState): GameAction | null {
-  if (state.activePlayer !== 'p2' || state.winner || state.players.p2.actionPoints <= 0) {
-    return { type: 'END_TURN', playerId: 'p2' };
+  if (state.activePlayer !== 'p2' || state.winner) {
+    return null;
   }
 
   const ai = state.players.p2;
@@ -69,78 +69,80 @@ export function getAIMove(state: GameState): GameAction | null {
     }
   }
 
-  // 3. Play abilities if useful
-  const queenOrKing = ai.hand.find((c) => c.rank === 'Q' || c.rank === 'K');
-  const aceOrKing = ai.hand.find((c) => c.rank === 'A' || c.rank === 'K');
+  // 3. Play abilities or deploy soldiers if AP available
+  if (ai.actionPoints > 0) {
+    const queenOrKing = ai.hand.find((c) => c.rank === 'Q' || c.rank === 'K');
+    const aceOrKing = ai.hand.find((c) => c.rank === 'A' || c.rank === 'K');
 
-  // Destroy enemy soldier if available
-  const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
-  if (enemyWithSoldier !== -1 && aceOrKing) {
-    return {
-      type: 'USE_ABILITY',
-      playerId: 'p2',
-      cardId: aceOrKing.id,
-      ability: 'destroy',
-      targetEnemySlotIndex: enemyWithSoldier,
-    };
-  }
-
-  // Heal if HP is damaged
-  if (ai.shields.length < 3 && ai.deck.length > 0 && queenOrKing) {
-    return {
-      type: 'USE_ABILITY',
-      playerId: 'p2',
-      cardId: queenOrKing.id,
-      ability: 'heal',
-    };
-  }
-
-  // Holy shield if not protected
-  if (!ai.hasHolyShield && aceOrKing) {
-    return {
-      type: 'USE_ABILITY',
-      playerId: 'p2',
-      cardId: aceOrKing.id,
-      ability: 'holy_shield',
-    };
-  }
-
-  // Revive if high-power soldier is in graveyard
-  const soldierInGraveyard = ai.graveyard.find((c) => c.role === 'soldier');
-  if (soldierInGraveyard && queenOrKing) {
-    return {
-      type: 'USE_ABILITY',
-      playerId: 'p2',
-      cardId: queenOrKing.id,
-      ability: 'revive',
-      targetGraveyardCardId: soldierInGraveyard.id,
-    };
-  }
-
-  // Supply to draw cards
-  if (ai.deck.length > 0 && queenOrKing) {
-    return {
-      type: 'USE_ABILITY',
-      playerId: 'p2',
-      cardId: queenOrKing.id,
-      ability: 'supply',
-    };
-  }
-
-  // 4. Deploy soldiers if slots available
-  const emptySlotIdx = ai.frontLine.findIndex((slot) => slot === null);
-  if (emptySlotIdx !== -1) {
-    const deployableSoldier = ai.hand
-      .filter((c) => c.role === 'soldier')
-      .sort((a, b) => b.basePower - a.basePower)[0];
-
-    if (deployableSoldier) {
+    // Destroy enemy soldier if available
+    const enemyWithSoldier = human.frontLine.findIndex((s) => s !== null);
+    if (enemyWithSoldier !== -1 && aceOrKing) {
       return {
-        type: 'DEPLOY_SOLDIER',
+        type: 'USE_ABILITY',
         playerId: 'p2',
-        cardId: deployableSoldier.id,
-        slotIndex: emptySlotIdx,
+        cardId: aceOrKing.id,
+        ability: 'destroy',
+        targetEnemySlotIndex: enemyWithSoldier,
       };
+    }
+
+    // Heal if HP is damaged
+    if (ai.shields.length < 3 && ai.deck.length > 0 && queenOrKing) {
+      return {
+        type: 'USE_ABILITY',
+        playerId: 'p2',
+        cardId: queenOrKing.id,
+        ability: 'heal',
+      };
+    }
+
+    // Holy shield if not protected
+    if (!ai.hasHolyShield && aceOrKing) {
+      return {
+        type: 'USE_ABILITY',
+        playerId: 'p2',
+        cardId: aceOrKing.id,
+        ability: 'holy_shield',
+      };
+    }
+
+    // Revive if high-power soldier is in graveyard
+    const soldierInGraveyard = ai.graveyard.find((c) => c.role === 'soldier');
+    if (soldierInGraveyard && queenOrKing) {
+      return {
+        type: 'USE_ABILITY',
+        playerId: 'p2',
+        cardId: queenOrKing.id,
+        ability: 'revive',
+        targetGraveyardCardId: soldierInGraveyard.id,
+      };
+    }
+
+    // Supply to draw cards
+    if (ai.deck.length > 0 && queenOrKing) {
+      return {
+        type: 'USE_ABILITY',
+        playerId: 'p2',
+        cardId: queenOrKing.id,
+        ability: 'supply',
+      };
+    }
+
+    // Deploy soldiers if slots available
+    const emptySlotIdx = ai.frontLine.findIndex((slot) => slot === null);
+    if (emptySlotIdx !== -1) {
+      const deployableSoldier = ai.hand
+        .filter((c) => c.role === 'soldier')
+        .sort((a, b) => b.basePower - a.basePower)[0];
+
+      if (deployableSoldier) {
+        return {
+          type: 'DEPLOY_SOLDIER',
+          playerId: 'p2',
+          cardId: deployableSoldier.id,
+          slotIndex: emptySlotIdx,
+        };
+      }
     }
   }
 

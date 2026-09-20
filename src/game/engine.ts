@@ -277,7 +277,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     }
 
     case 'ATTACK_SOLDIER': {
-      if (activePlayer.actionPoints <= 0) return state;
       if (action.targetSlotIndex < 0 || action.targetSlotIndex > 2) return state;
       const targetSoldier = opponent.frontLine[action.targetSlotIndex];
       if (!targetSoldier) return state;
@@ -396,8 +395,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
         }
       }
 
-      activePlayer.actionPoints -= 1;
-
       let bonusLog = '';
       if (attackerDiamondBonusTriggered) bonusLog += ` [♦️ ${activePlayer.name} ได้จั่วไพ่ 1 ใบ]`;
       if (defenderDiamondBonusTriggered) bonusLog += ` [♦️ ${opponent.name} ได้จั่วไพ่ 1 ใบ]`;
@@ -438,8 +435,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     }
 
     case 'ATTACK_KING': {
-      if (activePlayer.actionPoints <= 0) return state;
-
       // Prevent duplicate card IDs in attacker list
       const uniqueAttackerIds = Array.from(new Set(action.attackerCardIds));
       if (
@@ -553,8 +548,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
           soldier.hasAttackedThisTurn = true;
         }
       }
-
-      activePlayer.actionPoints -= 1;
 
       const combatResult: CombatResult = {
         attackerPlayer: activePlayer.id,
