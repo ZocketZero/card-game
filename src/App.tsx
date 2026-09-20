@@ -590,7 +590,9 @@ export function App() {
 
   // Hand card click
   const handleHandCardClick = (card: Card) => {
-    if (!isMyTurn || activePlayerState.actionPoints <= 0) return;
+    // Abilities (Q/K/A) are free — only block soldiers when out of AP
+    if (!isMyTurn) return;
+    if (card.role === 'soldier' && activePlayerState.actionPoints <= 0) return;
 
     if (card.role === 'soldier') {
       if (selectedHandCardId === card.id) {
@@ -864,7 +866,7 @@ export function App() {
                 <div className="player-hand-scroll">
                   {activePlayerState.hand.map((card) => {
                     const isSelected = selectedHandCardId === card.id;
-                    const isPlayable = isMyTurn && activePlayerState.actionPoints > 0;
+                    const isPlayable = isMyTurn && (card.role !== 'soldier' || activePlayerState.actionPoints > 0);
 
                     return (
                       <CardView

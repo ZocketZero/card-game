@@ -193,7 +193,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
     }
 
     case 'USE_ABILITY': {
-      if (activePlayer.actionPoints <= 0) return state;
       const cardIndex = activePlayer.hand.findIndex((c) => c.id === action.cardId);
       if (cardIndex === -1) return state;
       const card = activePlayer.hand[cardIndex];
@@ -234,7 +233,6 @@ export function executeAction(state: GameState, action: GameAction): GameState {
       // Discard ability card to graveyard
       activePlayer.hand.splice(cardIndex, 1);
       activePlayer.graveyard.push(card);
-      activePlayer.actionPoints -= 1;
 
       let desc = '';
       if (action.ability === 'supply') {

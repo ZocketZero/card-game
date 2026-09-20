@@ -265,7 +265,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
     // Hand had 1 (Q), discarded Q, drew 2 -> hand count is 2
     expect(state.players.p1.hand.length).toBe(2);
     expect(state.players.p1.deck.length).toBe(initialDeckCount - 2);
-    expect(state.players.p1.actionPoints).toBe(1);
+    expect(state.players.p1.actionPoints).toBe(2);
   });
 
   it('triggers Diamond bonus for defender when killing the attacker', () => {
@@ -437,7 +437,7 @@ describe('The Sovereign’s Duel Game Engine', () => {
     });
 
     expect(state.players.p2.frontLine[1]).toBeNull();
-    expect(state.players.p1.actionPoints).toBe(1);
+    expect(state.players.p1.actionPoints).toBe(2);
 
     // Attempting invalid destroy on empty slot is rejected
     state.players.p1.hand = [{ id: 'k2', owner: 'p1', suit: 'clubs', rank: 'K', basePower: 0, role: 'king' }];
